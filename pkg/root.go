@@ -65,5 +65,8 @@ in Kubernetes clusters through Kaito workspaces.`,
 	cmd.PersistentFlags().StringVar(configFlags.Context, "context", *configFlags.Context, "The name of the kubeconfig context to use")
 	cmd.PersistentFlags().StringVarP(configFlags.Namespace, "namespace", "n", *configFlags.Namespace, "If present, the namespace scope for this CLI request")
 
+	// Add subcommands
+	cmd.AddCommand(NewDeployCmd(configFlags))
+
 	return cmd
 }
