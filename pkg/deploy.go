@@ -91,6 +91,7 @@ the specified model according to Kaito's preset configurations.`,
   kubectl kaito deploy --workspace-name public-llama --model llama-3.1-8b-instruct --enable-load-balancer`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := o.Validate(); err != nil {
+				klog.Errorf("Validation failed: %v", err)
 				return err
 			}
 			return o.Run()
@@ -223,11 +224,6 @@ func (o *DeployOptions) validateModeFlags() error {
 func (o *DeployOptions) Run() error {
 	klog.V(2).Infof("Starting deploy command for workspace: %s", o.WorkspaceName)
 
-	if err := o.Validate(); err != nil {
-		klog.Errorf("Validation failed: %v", err)
-		return fmt.Errorf("validation failed: %w", err)
-	}
-
 	// Get namespace from config flags if not set
 	if o.Namespace == "" {
 		if ns, _, err := o.configFlags.ToRawKubeConfigLoader().Namespace(); err == nil && ns != "" {
@@ -357,86 +353,94 @@ func (o *DeployOptions) createWorkspaceSpec() map[string]interface{} {
 
 	// Configure inference or tuning
 	if o.Tuning {
-		klog.V(3).Info("Configuring tuning mode")
-		// Tuning configuration
-		tuning := map[string]interface{}{}
-
-		if o.TuningMethod != "" {
-			tuning["method"] = o.TuningMethod
-		}
-
-		if o.Model != "" {
-			tuning["preset"] = map[string]interface{}{
-				"name": o.Model,
-			}
-		}
-
-		if len(o.InputURLs) > 0 {
-			tuning["input"] = map[string]interface{}{
-				"urls": o.InputURLs,
-			}
-		} else if o.InputPVC != "" {
-			tuning["input"] = map[string]interface{}{
-				"pvc": o.InputPVC,
-			}
-		}
-
-		if o.OutputImage != "" {
-			tuning["output"] = map[string]interface{}{
-				"image": o.OutputImage,
-			}
-		} else if o.OutputPVC != "" {
-			tuning["output"] = map[string]interface{}{
-				"pvc": o.OutputPVC,
-			}
-		}
-
-		if o.OutputImageSecret != "" {
-			if tuning["output"] == nil {
-				tuning["output"] = map[string]interface{}{}
-			}
-			tuning["output"].(map[string]interface{})["imageSecret"] = o.OutputImageSecret
-		}
-
-		if o.TuningConfig != "" {
-			tuning["config"] = o.TuningConfig
-		}
-
-		spec["tuning"] = tuning
+		o.configureTuning(spec)
 	} else {
-		klog.V(3).Info("Configuring inference mode")
-		// Inference configuration
-		inference := map[string]interface{}{}
-
-		if o.Model != "" {
-			inference["preset"] = map[string]interface{}{
-				"name": o.Model,
-			}
-		}
-
-		// Add model access secret if specified
-		if o.ModelAccessSecret != "" {
-			inference["accessMode"] = "private"
-			inference["secretName"] = o.ModelAccessSecret
-			klog.V(4).Info("Added private model access configuration")
-		}
-
-		// Add adapters if specified
-		if len(o.Adapters) > 0 {
-			inference["adapters"] = o.Adapters
-			klog.V(4).Infof("Added adapters: %v", o.Adapters)
-		}
-
-		// Add inference config if specified
-		if o.InferenceConfig != "" {
-			inference["config"] = o.InferenceConfig
-			klog.V(4).Info("Added custom inference configuration")
-		}
-
-		spec["inference"] = inference
+		o.configureInference(spec)
 	}
 
 	return spec
+}
+
+func (o *DeployOptions) configureTuning(spec map[string]interface{}) {
+	klog.V(3).Info("Configuring tuning mode")
+	// Tuning configuration
+	tuning := map[string]interface{}{}
+
+	if o.TuningMethod != "" {
+		tuning["method"] = o.TuningMethod
+	}
+
+	if o.Model != "" {
+		tuning["preset"] = map[string]interface{}{
+			"name": o.Model,
+		}
+	}
+
+	if len(o.InputURLs) > 0 {
+		tuning["input"] = map[string]interface{}{
+			"urls": o.InputURLs,
+		}
+	} else if o.InputPVC != "" {
+		tuning["input"] = map[string]interface{}{
+			"pvc": o.InputPVC,
+		}
+	}
+
+	if o.OutputImage != "" {
+		tuning["output"] = map[string]interface{}{
+			"image": o.OutputImage,
+		}
+	} else if o.OutputPVC != "" {
+		tuning["output"] = map[string]interface{}{
+			"pvc": o.OutputPVC,
+		}
+	}
+
+	if o.OutputImageSecret != "" {
+		if tuning["output"] == nil {
+			tuning["output"] = map[string]interface{}{}
+		}
+		tuning["output"].(map[string]interface{})["imageSecret"] = o.OutputImageSecret
+	}
+
+	if o.TuningConfig != "" {
+		tuning["config"] = o.TuningConfig
+	}
+
+	spec["tuning"] = tuning
+}
+
+func (o *DeployOptions) configureInference(spec map[string]interface{}) {
+	klog.V(3).Info("Configuring inference mode")
+	// Inference configuration
+	inference := map[string]interface{}{}
+
+	if o.Model != "" {
+		inference["preset"] = map[string]interface{}{
+			"name": o.Model,
+		}
+	}
+
+	// Add model access secret if specified
+	if o.ModelAccessSecret != "" {
+		inference["accessMode"] = "private"
+		inference["secretName"] = o.ModelAccessSecret
+		klog.V(4).Info("Added private model access configuration")
+	}
+
+	// Add adapters if specified
+	if len(o.Adapters) > 0 {
+		inference["adapters"] = o.Adapters
+		klog.V(4).Infof("Added adapters: %v", o.Adapters)
+	}
+
+	// Add inference config if specified
+	if o.InferenceConfig != "" {
+		inference["config"] = o.InferenceConfig
+		klog.V(4).Info("Added custom inference configuration")
+	}
+
+	spec["inference"] = inference
 }
 
 func (o *DeployOptions) showDryRun() error {

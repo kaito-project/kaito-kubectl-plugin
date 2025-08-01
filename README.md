@@ -25,7 +25,9 @@ kubectl-kaito simplifies AI model deployment on Kubernetes by providing an intui
 kubectl kaito models list
 
 # Deploy a model for inference
-kubectl kaito deploy --workspace-name my-workspace --model llama-2-7b
+kubectl kaito deploy --workspace-name my-workspace \
+--model phi-3.5-mini-instruct \
+--instance-type Standard_NC6s_v3
 
 # Check deployment status
 kubectl kaito status --workspace-name my-workspace
