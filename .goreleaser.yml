@@ -1,0 +1,70 @@
+version: 2
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: kaito-kubectl-plugin
+    main: ./cmd/kubectl-kaito
+    binary: bin/kubectl-kaito
+    env:
+      - CGO_ENABLED=0
+      - GO111MODULE=on
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    # Exclude Windows ARM64 as it's not commonly used
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X {{.ModulePath}}/pkg/cmd.version={{.Version}}
+      - -X {{.ModulePath}}/pkg/cmd.commit={{.Commit}}
+      - -X {{.ModulePath}}/pkg/cmd.date={{.Date}}
+
+archives:
+  - name_template: >-
+      {{ .ProjectName }}-{{ .Version }}-
+      {{- .Os }}-
+      {{- if eq .Arch "amd64" }}amd64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    files:
+      - LICENSE
+
+changelog:
+  groups:
+    - title: Features 🌈
+      regexp: ^.*feat[(\\w)]*:+.*$
+    - title: Bug Fixes 🐞
+      regexp: ^.*fix[(\\w)]*:+.*$
+    - title: Code Refactoring 💎
+      regexp: ^.*refactor[(\\w)]*:+.*$
+    - title: Code Style 🎶
+      regexp: ^.*style[(\\w)]*:+.*$
+    - title: Continuous Integration 💜
+      regexp: ^.*ci[(\\w)]*:+.*$
+    - title: Documentation 📘
+      regexp: ^.*docs[(\\w)]*:+.*$
+    - title: Maintenance 🔧
+      regexp: ^.*chore[(\\w)]*:+.*$
+    - title: Performance Improvements 🚀
+      regexp: ^.*perf[(\\w)]*:+.*$
+    - title: Revert Change ◀️
+      regexp: ^.*revert[(\\w)]*:+.*$
+    - title: Security Fix 🛡️
+      regexp: ^.*security[(\\w)]*:+.*$
+    - title: Testing 💚
+      regexp: ^.*test[(\\w)]*:+.*$
+
+release:
+  prerelease: auto
+  make_latest: true
+  header: |
+    ## kubectl kaito Plugin {{ .Tag }}  - {{ time "2006-01-02" }}

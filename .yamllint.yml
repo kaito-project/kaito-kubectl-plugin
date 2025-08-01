@@ -1,0 +1,43 @@
+extends: default
+
+rules:
+  # Allow long lines for GitHub Actions and Kubernetes manifests
+  line-length:
+    max: 120
+    level: warning
+
+  # Allow truthy values like 'on' which are common in GitHub Actions
+  truthy:
+    allowed-values: ["true", "false", "on", "off", "yes", "no"]
+    check-keys: false
+
+  # Relax indentation rules for complex nested structures
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+
+  # Allow empty values which are common in Kubernetes
+  empty-values:
+    forbid-in-block-mappings: false
+    forbid-in-flow-mappings: false
+
+  # Allow comments with only one space after #
+  comments:
+    min-spaces-from-content: 1
+
+  # Allow duplicate keys in certain contexts (like workflow matrices)
+  key-duplicates: disable
+
+  # Relax document start requirement
+  document-start:
+    present: false
+
+ignore: |
+  .github/
+  vendor/
+  node_modules/
+  dist/
+  build/
+  *.min.yml
+  *.min.yaml
