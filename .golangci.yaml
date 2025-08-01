@@ -1,0 +1,100 @@
+run:
+  timeout: 10m
+  tests: true
+  skip-dirs:
+    - vendor
+    - .git
+  skip-files:
+    - ".*\\.pb\\.go$"
+    - ".*_generated\\.go$"
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  uniq-by-line: true
+  sort-results: true
+
+linters:
+  enable:
+    - bodyclose
+    - gocritic
+    - gocyclo
+    - govet
+    - ineffassign
+    - misspell
+    - staticcheck
+    - unconvert
+    - unused
+    - whitespace
+    - gocognit
+  disable:
+    # Disable errcheck for CLI tool where many print/close errors are acceptable
+    - errcheck
+    # Disable exhaustruct as it's too strict for CLI tools with external dependencies
+    - exhaustruct
+
+linters-settings:
+  govet:
+    check-shadowing: true
+    enable-all: true
+    disable:
+      - fieldalignment
+
+  misspell:
+    locale: US
+
+  gocognit:
+    min-complexity: 25
+
+  gocyclo:
+    min-complexity: 25
+
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+
+  gosec:
+    severity: medium
+    confidence: medium
+    excludes:
+      - G204 # Subprocess launched with variable
+      - G304 # File path provided as taint input
+
+  exhaustruct:
+    exclude:
+      # Standard library and common external structs that shouldn't require all fields
+      - "^net/http.Client$"
+      - "^github.com/spf13/cobra.Command$"
+      - "k8s.io/apimachinery/pkg/apis/meta/v1.GetOptions"
+      - "k8s.io/apimachinery/pkg/apis/meta/v1.CreateOptions"
+      - "k8s.io/apimachinery/pkg/apis/meta/v1.ListOptions"
+      - "k8s.io/apimachinery/pkg/apis/meta/v1.UpdateOptions"
+      - "k8s.io/apimachinery/pkg/apis/meta/v1.DeleteOptions"
+
+  revive:
+    rules:
+      - name: exported
+        disabled: false
+      - name: unreachable-code
+        disabled: false
+      - name: unused-parameter
+        disabled: false
+
+issues:
+  exclude-use-default: false
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - goconst
+        - gocognit
+        - errcheck
+        - gosec
+        - funlen
+        - govet
+    - text: "Use of builtin print function"
+      linters:
+        - forbidigo
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new: false

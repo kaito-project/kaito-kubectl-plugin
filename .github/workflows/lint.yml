@@ -1,0 +1,163 @@
+name: Lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  GO_VERSION: "1.24"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  golangci-lint:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ec9f2d5744a09debf3a187a3f4f675c53b671911 # v2.13.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-telemetry: true
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Run golangci-lint
+        run: make lint
+
+  format-and-style:
+    name: Format and Style Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ec9f2d5744a09debf3a187a3f4f675c53b671911 # v2.13.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-telemetry: true
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Check gofmt
+        run: |
+          echo "Checking Go formatting..."
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "The following files are not formatted:"
+            echo "$unformatted"
+            echo ""
+            echo "Please run 'gofmt -w .' or 'make fmt' to fix formatting"
+            exit 1
+          fi
+          echo "All files are properly formatted"
+
+      - name: Check goimports
+        run: |
+          echo "Checking Go imports..."
+          if ! command -v goimports &> /dev/null; then
+            go install golang.org/x/tools/cmd/goimports@latest
+          fi
+
+          unformatted=$(goimports -l .)
+          if [ -n "$unformatted" ]; then
+            echo "The following files have incorrect imports:"
+            echo "$unformatted"
+            echo ""
+            echo "Please run 'goimports -w .' to fix imports"
+            exit 1
+          fi
+          echo "All imports are properly formatted"
+
+      - name: Run go vet
+        run: |
+          echo "Running go vet..."
+          go vet ./...
+          echo "go vet passed"
+
+      - name: Check go mod tidy
+        run: |
+          echo "Checking go mod tidy..."
+          go mod tidy
+          if ! git diff --quiet go.mod go.sum; then
+            echo  "go.mod or go.sum is not tidy"
+            echo "Please run 'go mod tidy' or 'make tidy'"
+            echo ""
+            echo "Diff:"
+            git diff go.mod go.sum
+            exit 1
+          fi
+          echo "go.mod and go.sum are tidy"
+
+  license-check:
+    name: License Header Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ec9f2d5744a09debf3a187a3f4f675c53b671911 # v2.13.0
+        with:
+          egress-policy: audit
+          disable-sudo: true
+          disable-telemetry: true
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check license headers
+        run: |
+          echo "Checking license headers..."
+
+          # Make the script executable
+          chmod +x ./hack/add-license-header.sh
+
+          # Check if all Go files have license headers
+          find . -name "*.go" -not -path "./vendor/*" | xargs ./hack/add-license-header.sh
+          EXIT_CODE=$?
+
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "All files have proper license headers"
+          else
+            echo "Some files were missing license headers (now fixed)"
+            echo "Please commit the changes and re-run the workflow"
+            exit 1
+          fi
+
+  lint-summary:
+    name: Lint Summary
+    runs-on: ubuntu-latest
+    needs: [golangci-lint, format-and-style, license-check]
+    if: always()
+    steps:
+      - name: Check lint results
+        run: |
+          echo "=== Lint Results Summary ==="
+          echo "golangci-lint: ${{ needs.golangci-lint.result }}"
+          echo "format-and-style: ${{ needs.format-and-style.result }}"
+          echo "license-check: ${{ needs.license-check.result }}"
+
+          # Check if any critical lints failed
+          if [[ "${{ needs.golangci-lint.result }}" != "success" || \
+                "${{ needs.format-and-style.result }}" != "success" || \
+                "${{ needs.license-check.result }}" != "success" ]]; then
+            echo "Critical lint checks failed"
+            exit 1
+          fi
+
+          echo "All required lint checks passed"

@@ -1,0 +1,105 @@
+exclude: "^$"
+fail_fast: false
+minimum_pre_commit_version: 3.0.0
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ["--unsafe"]
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: check-symlinks
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args:
+          [
+            "-d",
+            "{extends: default, rules: {line-length: {max: 120}, comments: {min-spaces-from-content: 1}}}",
+          ]
+
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v1.63.4
+    hooks:
+      - id: golangci-lint
+        args:
+          - --timeout=5m
+
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-fmt
+      - id: go-vet-mod
+      - id: go-mod-tidy
+      - id: go-unit-tests
+        args: [-race, -timeout=10m]
+
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.5.5
+    hooks:
+      - id: remove-tabs
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        types_or: [yaml, markdown, json]
+        exclude: ^(go\.(mod|sum)|.*\.lock)$
+
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.43.0
+    hooks:
+      - id: markdownlint
+        args: ["--disable", "MD013", "--disable", "MD033"]
+
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        files: Dockerfile.*
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        args: ["-e", "SC1091"]
+
+  - repo: local
+    hooks:
+      - id: license-header-go
+        name: Add license header to Go files
+        entry: hack/add-license-header.sh
+        language: script
+        files: '\.go$'
+        exclude: '^(vendor/|.*_test\.go$)'
+
+      - id: security-check
+        name: Security check
+        entry: make security-check
+        language: system
+        pass_filenames: false
+        always_run: true
+
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: ""
+  autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false
