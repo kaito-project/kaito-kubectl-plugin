@@ -41,47 +41,20 @@ unit-tests:
 	@echo "Coverage report generated: coverage.html"
 	@go tool cover -func=coverage.out | grep total
 
-# Run e2e tests
-.PHONY: test-e2e
-test-e2e: test-e2e-kind
-	@echo "E2E tests completed (excluding AKS tests)"
-
-# Run e2e tests with Kind cluster
-.PHONY: test-e2e-kind
-test-e2e-kind:
-	@echo "Setting up Kind cluster and running e2e tests..."
-	./e2e/setup-kind.sh
-	cd e2e && go test -v -timeout=15m -run "TestKindClusterOperations"
-	./e2e/cleanup-kind.sh
-
 # Run e2e tests with AKS cluster (creates billable resources)
 .PHONY: test-e2e-aks
 test-e2e-aks:
-	@echo "Warning: This will create billable Azure resources!"
-	@echo "Setting up AKS cluster and running e2e tests..."
-	./e2e/setup-aks.sh
-	cd e2e && go test -v -timeout=30m -run "TestAKSClusterOperations"
-	@echo "💡 To clean up AKS resources, run: ./e2e/cleanup-aks.sh"
-
-# Setup Kind cluster for manual testing
-.PHONY: setup-kind
-setup-kind:
-	./e2e/setup-kind.sh
+	cd tests/e2e && go test -v -timeout=30m -run "TestAKSClusterOperations"
 
 # Setup AKS cluster for manual testing
 .PHONY: setup-aks
 setup-aks:
-	./e2e/setup-aks.sh
-
-# Cleanup Kind cluster
-.PHONY: cleanup-kind
-cleanup-kind:
-	./e2e/cleanup-kind.sh
+	./hack/test/e2e/setup-aks.sh
 
 # Cleanup AKS cluster
 .PHONY: cleanup-aks
 cleanup-aks:
-	./e2e/cleanup-aks.sh
+	./hack/test/e2e/cleanup-aks.sh
 
 # Lint the code
 

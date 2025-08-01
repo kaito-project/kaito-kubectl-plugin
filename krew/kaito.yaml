@@ -63,18 +63,16 @@ spec:
     bin: "kubectl-kaito.exe"
   shortDescription: Manage AI/ML model inference and fine-tuning with Kaito
   description: |
-    kubectl-kaito is a command-line tool for managing AI/ML model inference 
-    and RAG (Retrieval-Augmented Generation) workloads using the Kubernetes 
-    AI Toolchain Operator (Kaito).
+    kubectl-kaito is a command-line tool for managing AI/ML model inference workloads
+    using the Kubernetes AI Toolchain Operator (Kaito).
 
     This plugin simplifies the deployment, management, and monitoring of AI models
-    in Kubernetes clusters through Kaito workspaces and RAG engines.
+    in Kubernetes clusters through Kaito workspaces.
 
     Features:
     - Deploy AI models for inference with automatic GPU provisioning
     - Manage workspace lifecycle and monitor status with real-time updates
     - Interactive chat with deployed models using OpenAI-compatible API
-    - Deploy and query RAG engines for document-based question answering
     - Discover and validate available model presets from Kaito repository
     - Get inference endpoints for programmatic access to deployed models
 
