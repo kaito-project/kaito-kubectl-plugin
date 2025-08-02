@@ -11,8 +11,8 @@ fi
 
 TAG=$1
 VERSION=${TAG#v}  # Remove 'v' prefix for filenames
-REPO="kaito-project/kaito-kubectl-plugin"
-TEMPLATE_FILE="krew/kaito.yaml"
+REPO="https://raw.githubusercontent.com/kaito-project/kaito-kubectl-plugin/refs/heads/main"
+TEMPLATE_FILE="${REPO}/krew/kaito.yaml"
 OUTPUT_FILE="krew/kaito-${TAG}.yaml"
 
 echo "Generating complete krew manifest for tag: $TAG"
