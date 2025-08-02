@@ -45,4 +45,3 @@ func TestStatusCmd(t *testing.T) {
 		assert.NotNil(t, watchFlag)
 	})
 }
-
