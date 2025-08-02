@@ -11,8 +11,8 @@ fi
 
 TAG=$1
 VERSION=${TAG#v}  # Remove 'v' prefix for filenames
-REPO="https://raw.githubusercontent.com/kaito-project/kaito-kubectl-plugin/refs/heads/main"
-TEMPLATE_FILE="${REPO}/krew/kaito.yaml"
+REPO="kaito-project/kaito-kubectl-plugin"
+TEMPLATE_FILE="https://raw.githubusercontent.com/kaito-project/kaito-kubectl-plugin/refs/heads/main/krew/kaito.yaml"
 OUTPUT_FILE="krew/kaito-${TAG}.yaml"
 
 echo "Generating complete krew manifest for tag: $TAG"
@@ -34,9 +34,11 @@ process_addURIAndSha() {
     echo "    sha256: $sha256"
 }
 
-# Check if template exists
-if [ ! -f "$TEMPLATE_FILE" ]; then
-    echo "Error: Template file $TEMPLATE_FILE not found"
+# Download template to temporary file
+TEMP_TEMPLATE=$(mktemp)
+if ! curl -sf "$TEMPLATE_FILE" -o "$TEMP_TEMPLATE"; then
+    echo "Error: Failed to download template file $TEMPLATE_FILE"
+    rm -f "$TEMP_TEMPLATE"
     exit 1
 fi
 
@@ -54,8 +56,11 @@ fi
             # Output line as-is
             echo "$line"
         fi
-    done < "$TEMPLATE_FILE"
+    done < "$TEMP_TEMPLATE"
 } > "$OUTPUT_FILE"
+
+# Clean up temporary file
+rm -f "$TEMP_TEMPLATE"
 
 echo "Generated complete krew manifest: $OUTPUT_FILE"
 echo "You can now test it with: kubectl krew install --manifest=$OUTPUT_FILE"
