@@ -54,7 +54,6 @@ Here are some key points about machine learning:
 ....
 
 >/quit
-👋 Goodbye!
 ```
 
 ### Configure Inference Parameters
