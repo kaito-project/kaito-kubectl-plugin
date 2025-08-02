@@ -11,56 +11,31 @@ spec:
         os: linux
         arch: amd64
     {{addURIAndSha "https://github.com/kaito-project/kaito-kubectl-plugin/releases/download/{{ .TagName }}/kaito-kubectl-plugin-{{ .Version }}-linux-amd64.tar.gz" .TagName }}
-    files:
-    - from: "./kubectl-kaito"
-      to: "."
-    - from: "./LICENSE"
-      to: "."
-    bin: "kubectl-kaito"
+    bin: "bin/kubectl-kaito"
   - selector:
       matchLabels:
         os: linux
         arch: arm64
     {{addURIAndSha "https://github.com/kaito-project/kaito-kubectl-plugin/releases/download/{{ .TagName }}/kaito-kubectl-plugin-{{ .Version }}-linux-arm64.tar.gz" .TagName }}
-    files:
-    - from: "./kubectl-kaito"
-      to: "."
-    - from: "./LICENSE"
-      to: "."
-    bin: "kubectl-kaito"
+    bin: "bin/kubectl-kaito"
   - selector:
       matchLabels:
         os: darwin
         arch: amd64
     {{addURIAndSha "https://github.com/kaito-project/kaito-kubectl-plugin/releases/download/{{ .TagName }}/kaito-kubectl-plugin-{{ .Version }}-darwin-amd64.tar.gz" .TagName }}
-    files:
-    - from: "./kubectl-kaito"
-      to: "."
-    - from: "./LICENSE"
-      to: "."
-    bin: "kubectl-kaito"
+    bin: "bin/kubectl-kaito"
   - selector:
       matchLabels:
         os: darwin
         arch: arm64
     {{addURIAndSha "https://github.com/kaito-project/kaito-kubectl-plugin/releases/download/{{ .TagName }}/kaito-kubectl-plugin-{{ .Version }}-darwin-arm64.tar.gz" .TagName }}
-    files:
-    - from: "./kubectl-kaito"
-      to: "."
-    - from: "./LICENSE"
-      to: "."
-    bin: "kubectl-kaito"
+    bin: "bin/kubectl-kaito"
   - selector:
       matchLabels:
         os: windows
         arch: amd64
     {{addURIAndSha "https://github.com/kaito-project/kaito-kubectl-plugin/releases/download/{{ .TagName }}/kaito-kubectl-plugin-{{ .Version }}-windows-amd64.tar.gz" .TagName }}
-    files:
-    - from: "./kubectl-kaito.exe"
-      to: "."
-    - from: "./LICENSE"
-      to: "."
-    bin: "kubectl-kaito.exe"
+    bin: "bin/kubectl-kaito.exe"
   shortDescription: Manage AI/ML model inference and fine-tuning with Kaito
   description: |
     kubectl-kaito is a command-line tool for managing AI/ML model inference workloads
@@ -75,4 +50,4 @@ spec:
     - Interactive chat with deployed models using OpenAI-compatible API
     - Discover and validate available model presets from Kaito repository
     - Get inference endpoints for programmatic access to deployed models
-
+    
