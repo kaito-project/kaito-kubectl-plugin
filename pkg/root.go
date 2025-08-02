@@ -69,6 +69,7 @@ in Kubernetes clusters through Kaito workspaces.`,
 	cmd.AddCommand(NewDeployCmd(configFlags))
 	cmd.AddCommand(NewStatusCmd(configFlags))
 	cmd.AddCommand(NewModelsCmd(configFlags))
+	cmd.AddCommand(NewGetEndpointCmd(configFlags))
 
 	return cmd
 }
