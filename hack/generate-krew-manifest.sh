@@ -15,6 +15,9 @@ REPO="kaito-project/kaito-kubectl-plugin"
 TEMPLATE_FILE="https://raw.githubusercontent.com/kaito-project/kaito-kubectl-plugin/refs/heads/main/krew/kaito.yaml"
 OUTPUT_FILE="krew/kaito-${TAG}.yaml"
 
+# Create krew directory if it doesn't exist
+mkdir -p krew
+
 echo "Generating complete krew manifest for tag: $TAG"
 
 # Function to get SHA256 of a URL
