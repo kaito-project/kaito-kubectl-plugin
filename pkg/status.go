@@ -389,35 +389,6 @@ func (o *StatusOptions) printConditions(workspace *unstructured.Unstructured) {
 	fmt.Println()
 }
 
-func (o *StatusOptions) getInstanceType(workspace *unstructured.Unstructured) string {
-	instanceType, found, err := unstructured.NestedString(workspace.Object, "spec", "resource", "instanceType")
-	if err != nil || !found {
-		klog.V(6).Infof("Instance type not found for workspace %s", workspace.GetName())
-		return "Unknown"
-	}
-	return instanceType
-}
-
-func (o *StatusOptions) getConditionStatus(workspace *unstructured.Unstructured, conditionType string) string {
-	conditions, found, err := unstructured.NestedSlice(workspace.Object, "status", "conditions")
-	if err != nil || !found {
-		klog.V(6).Infof("Conditions not found for workspace %s", workspace.GetName())
-		return "Unknown"
-	}
-
-	for _, condition := range conditions {
-		if condMap, ok := condition.(map[string]interface{}); ok {
-			if cType, ok := condMap["type"].(string); ok && cType == conditionType {
-				if status, ok := condMap["status"].(string); ok {
-					return status
-				}
-			}
-		}
-	}
-
-	return "Unknown"
-}
-
 func (o *StatusOptions) getAge(workspace *unstructured.Unstructured) string {
 	creationTimestamp := workspace.GetCreationTimestamp()
 	if creationTimestamp.IsZero() {
