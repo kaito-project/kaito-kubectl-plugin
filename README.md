@@ -1,6 +1,7 @@
 # kaito-kubectl-plugin
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![codecov](https://codecov.io/gh/kaito-project/kaito-kubectl-plugin/graph/badge.svg?token=wu6FdqYPVu)](https://codecov.io/gh/kaito-project/kaito-kubectl-plugin)
 
 A kubectl plugin for deploying and managing AI/ML models using the [Kubernetes AI Toolchain Operator (Kaito)](https://github.com/kaito-project/kaito).
 
