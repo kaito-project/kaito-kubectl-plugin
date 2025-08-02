@@ -235,6 +235,7 @@ func (o *GetEndpointOptions) isWorkspaceReady(status interface{}) bool {
 	// For endpoint access, we need both ResourceReady and InferenceReady to be True
 	resourceReady := false
 	inferenceReady := false
+	jobStarted := false
 
 	for _, condition := range conditionsList {
 		condMap, ok := condition.(map[string]interface{})
@@ -261,11 +262,18 @@ func (o *GetEndpointOptions) isWorkspaceReady(status interface{}) bool {
 			if condStatus == "True" {
 				inferenceReady = true
 			}
+		case "JobStarted":
+			// JobStarted condition is not required for endpoint access, but can be useful for debugging
+			if condStatus == "True" {
+				jobStarted = true
+			}
+		default:
+			klog.V(6).Infof("Unknown condition type: %s", condType)
 		}
 	}
 
 	// Return true only if both resource and inference are ready
-	return resourceReady && inferenceReady
+	return (resourceReady && inferenceReady) || (resourceReady && jobStarted)
 }
 
 func (o *GetEndpointOptions) getAllEndpoints(ctx context.Context, clientset kubernetes.Interface) ([]EndpointInfo, error) {

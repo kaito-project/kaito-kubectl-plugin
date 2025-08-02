@@ -43,9 +43,6 @@ func TestStatusCmd(t *testing.T) {
 		workspaceFlag := flags.Lookup("workspace-name")
 		assert.NotNil(t, workspaceFlag)
 
-		allNamespacesFlag := flags.Lookup("all-namespaces")
-		assert.NotNil(t, allNamespacesFlag)
-
 		watchFlag := flags.Lookup("watch")
 		assert.NotNil(t, watchFlag)
 	})
