@@ -57,39 +57,22 @@ kubectl kaito chat --workspace-name my-workspace
 kubectl krew install kaito
 ```
 
-#### Install from Local Manifest
+#### Generate Krew Manifest Locally
 
 ```bash
-# Clone the repository
-git clone https://github.com/kaito-project/kaito-kubectl-plugin.git
-cd kaito-kubectl-plugin
+# Get the script
+curl -sO https://raw.githubusercontent.com/kaito-project/kaito-kubectl-plugin/refs/heads/main/hack/generate-krew-manifest.sh
 
-# Generate manifest for a specific version
-./hack/generate-krew-manifest.sh v0.1.0
+# Generate manifest for a specific version with real SHA256 values
+chmod +x ./generate-krew-manifest.sh && ./generate-krew-manifest.sh v0.1.0
 
 # Install the generated manifest
 kubectl krew install --manifest=krew/kaito-v0.1.0.yaml
 ```
 
-#### Install from URL
-
-```bash
-# Install a specific version from GitHub
-kubectl krew install --manifest=https://github.com/kaito-project/kaito-kubectl-plugin/releases/download/v1.0.0/kaito.yaml
-```
-
-#### Generate Krew Manifest Locally
-
-For development and testing:
-
-```bash
-# Generate complete manifest with real SHA256 values
-./hack/generate-krew-manifest.sh v1.0.0
-```
-
 ### Manual Installation
 
-#### Download Pre-built Binary
+#### Download Release Pre-built Binary
 
 1. Download the latest binary from the [releases page](https://github.com/kaito-project/kaito-kubectl-plugin/releases)
 2. Extract and place the binary in your `$PATH` as `kubectl-kaito`
@@ -99,24 +82,10 @@ For development and testing:
    chmod +x kubectl-kaito
    ```
 
-#### Build from Source
-
-```bash
-git clone https://github.com/kaito-project/kaito-kubectl-plugin.git
-cd kaito-kubectl-plugin
-make build
-sudo mv bin/kubectl-kaito /usr/local/bin/
-```
-
 ### Verify Installation
 
 ```bash
-# Check if the plugin is installed
-kubectl plugin list | grep kaito
-
-# Test basic functionality
 kubectl kaito --help
-kubectl kaito models list
 ```
 
 ## Usage Examples
