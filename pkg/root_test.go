@@ -96,7 +96,6 @@ func TestRootCmdSubcommands(t *testing.T) {
 		"get-endpoint",
 		"chat",
 		"models",
-		// Note: "rag" is commented out in root.go
 	}
 
 	t.Run("Subcommands present", func(t *testing.T) {
