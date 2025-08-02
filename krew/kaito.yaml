@@ -10,7 +10,7 @@ spec:
       matchLabels:
         os: linux
         arch: amd64
-    {{addURIAndSha "https://github.com/kaito-project/kaito-kubectl-plugin/releases/download/{{ .TagName }}/kubectl-kaito-{{ .Version }}-linux-amd64.tar.gz" .TagName }}
+    {{addURIAndSha "https://github.com/kaito-project/kaito-kubectl-plugin/releases/download/{{ .TagName }}/kaito-kubectl-plugin-{{ .Version }}-linux-amd64.tar.gz" .TagName }}
     files:
     - from: "./kubectl-kaito"
       to: "."
@@ -21,7 +21,7 @@ spec:
       matchLabels:
         os: linux
         arch: arm64
-    {{addURIAndSha "https://github.com/kaito-project/kaito-kubectl-plugin/releases/download/{{ .TagName }}/kubectl-kaito-{{ .Version }}-linux-arm64.tar.gz" .TagName }}
+    {{addURIAndSha "https://github.com/kaito-project/kaito-kubectl-plugin/releases/download/{{ .TagName }}/kaito-kubectl-plugin-{{ .Version }}-linux-arm64.tar.gz" .TagName }}
     files:
     - from: "./kubectl-kaito"
       to: "."
@@ -32,7 +32,7 @@ spec:
       matchLabels:
         os: darwin
         arch: amd64
-    {{addURIAndSha "https://github.com/kaito-project/kaito-kubectl-plugin/releases/download/{{ .TagName }}/kubectl-kaito-{{ .Version }}-darwin-amd64.tar.gz" .TagName }}
+    {{addURIAndSha "https://github.com/kaito-project/kaito-kubectl-plugin/releases/download/{{ .TagName }}/kaito-kubectl-plugin-{{ .Version }}-darwin-amd64.tar.gz" .TagName }}
     files:
     - from: "./kubectl-kaito"
       to: "."
@@ -43,7 +43,7 @@ spec:
       matchLabels:
         os: darwin
         arch: arm64
-    {{addURIAndSha "https://github.com/kaito-project/kaito-kubectl-plugin/releases/download/{{ .TagName }}/kubectl-kaito-{{ .Version }}-darwin-arm64.tar.gz" .TagName }}
+    {{addURIAndSha "https://github.com/kaito-project/kaito-kubectl-plugin/releases/download/{{ .TagName }}/kaito-kubectl-plugin-{{ .Version }}-darwin-arm64.tar.gz" .TagName }}
     files:
     - from: "./kubectl-kaito"
       to: "."
@@ -54,7 +54,7 @@ spec:
       matchLabels:
         os: windows
         arch: amd64
-    {{addURIAndSha "https://github.com/kaito-project/kaito-kubectl-plugin/releases/download/{{ .TagName }}/kubectl-kaito-{{ .Version }}-windows-amd64.tar.gz" .TagName }}
+    {{addURIAndSha "https://github.com/kaito-project/kaito-kubectl-plugin/releases/download/{{ .TagName }}/kaito-kubectl-plugin-{{ .Version }}-windows-amd64.tar.gz" .TagName }}
     files:
     - from: "./kubectl-kaito.exe"
       to: "."
