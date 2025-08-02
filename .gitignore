@@ -6,8 +6,8 @@
 *.dylib
 
 # Project binaries (current and bin directory)
-kubectl-kaito
-kubectl-kaito-*
+/kubectl-kaito
+/kubectl-kaito-*
 bin/
 
 # Test binary, built with `go test -c`
