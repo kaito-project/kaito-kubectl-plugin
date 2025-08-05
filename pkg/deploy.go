@@ -423,8 +423,22 @@ func (o *DeployOptions) configureInference(spec map[string]interface{}) {
 
 	// Add model access secret if specified
 	if o.ModelAccessSecret != "" {
-		inference["accessMode"] = "private"
-		inference["secretName"] = o.ModelAccessSecret
+		// Add modelAccessSecret under presetOptions
+		if inference["preset"] == nil {
+			inference["preset"] = map[string]interface{}{
+				"name": o.Model,
+				"presetOptions": map[string]interface{}{
+					"modelAccessSecret": o.ModelAccessSecret,
+				},
+			}
+		} else {
+			preset := inference["preset"].(map[string]interface{})
+			if preset["presetOptions"] == nil {
+				preset["presetOptions"] = map[string]interface{}{}
+			}
+			presetOptions := preset["presetOptions"].(map[string]interface{})
+			presetOptions["modelAccessSecret"] = o.ModelAccessSecret
+		}
 		klog.V(4).Info("Added private model access configuration")
 	}
 
