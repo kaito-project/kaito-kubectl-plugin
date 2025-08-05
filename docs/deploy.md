@@ -55,6 +55,7 @@ These flags can only be used when `--tuning` is **enabled**:
 | ------------------------------ | -------- | ------- | --------------------------------- |
 | `--tuning`                     | bool     | false   | Enable fine-tuning mode           |
 | `--tuning-method string`       | string   | qlora   | Fine-tuning method (qlora, lora)  |
+| `--model-image string`         | string   |         | Custom image for the model preset |
 | `--input-urls strings`         | []string |         | URLs to training data             |
 | `--input-pvc string`           | string   |         | PVC containing training data      |
 | `--output-image string`        | string   |         | Output image for fine-tuned model |
@@ -114,20 +115,22 @@ kubectl kaito deploy \
 ### Fine-tuning Deployment
 
 ```bash
-# Deploy for fine-tuning with QLoRA using URLs
+# Deploy for fine-tuning with QLoRA using URLs and custom model image
 kubectl kaito deploy \
   --workspace-name tune-phi \
   --model phi-3.5-mini-instruct \
   --tuning \
   --tuning-method qlora \
+  --model-image myregistry/phi-base:latest \
   --input-urls "https://example.com/data.parquet" \
   --output-image myregistry/phi-finetuned:latest
 
-# Deploy for fine-tuning with PVC storage
+# Deploy for fine-tuning with PVC storage and custom model image
 kubectl kaito deploy \
   --workspace-name tune-llama \
   --model llama-3.1-8b-instruct \
   --tuning \
+  --model-image myregistry/llama-base:latest \
   --input-pvc training-data \
   --output-pvc model-output
 ```

@@ -118,6 +118,7 @@ the specified model according to Kaito's preset configurations.`,
 	// Tuning specific flags
 	cmd.Flags().BoolVar(&o.Tuning, "tuning", false, "Enable fine-tuning mode")
 	cmd.Flags().StringVar(&o.TuningMethod, "tuning-method", "qlora", "Fine-tuning method (qlora, lora)")
+	cmd.Flags().StringVar(&o.ModelImage, "model-image", "", "Custom image for the model preset")
 	cmd.Flags().StringSliceVar(&o.InputURLs, "input-urls", nil, "URLs to training data")
 	cmd.Flags().StringVar(&o.OutputImage, "output-image", "", "Output image for fine-tuned model")
 	cmd.Flags().StringVar(&o.OutputImageSecret, "output-image-secret", "", "Secret for pushing output image")
@@ -201,6 +202,7 @@ func (o *DeployOptions) validateModeFlags() error {
 		{"tuning-config", o.TuningConfig, o.TuningConfig == ""},
 		{"input-pvc", o.InputPVC, o.InputPVC == ""},
 		{"output-pvc", o.OutputPVC, o.OutputPVC == ""},
+		{"model-image", o.ModelImage, o.ModelImage == ""},
 	}
 
 	// Check if tuning mode is explicitly enabled
@@ -371,9 +373,21 @@ func (o *DeployOptions) configureTuning(spec map[string]interface{}) {
 	}
 
 	if o.Model != "" {
-		tuning["preset"] = map[string]interface{}{
+		preset := map[string]interface{}{
 			"name": o.Model,
 		}
+
+		// Add model image if specified
+		if o.ModelImage != "" {
+			if preset["presetOptions"] == nil {
+				preset["presetOptions"] = map[string]interface{}{}
+			}
+			presetOptions := preset["presetOptions"].(map[string]interface{})
+			presetOptions["image"] = o.ModelImage
+			klog.V(4).Info("Added custom model image")
+		}
+
+		tuning["preset"] = preset
 	}
 
 	if len(o.InputURLs) > 0 {
