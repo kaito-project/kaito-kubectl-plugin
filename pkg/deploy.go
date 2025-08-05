@@ -19,14 +19,17 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/yaml"
 )
@@ -110,7 +113,7 @@ the specified model according to Kaito's preset configurations.`,
 	// Inference specific flags
 	cmd.Flags().StringVar(&o.ModelAccessSecret, "model-access-secret", "", "Secret for private model access")
 	cmd.Flags().StringSliceVar(&o.Adapters, "adapters", nil, "Model adapters to load")
-	cmd.Flags().StringVar(&o.InferenceConfig, "inference-config", "", "Custom inference configuration")
+	cmd.Flags().StringVar(&o.InferenceConfig, "inference-config", "", "Custom inference configuration (either a ConfigMap name or path to a YAML file)")
 
 	// Tuning specific flags
 	cmd.Flags().BoolVar(&o.Tuning, "tuning", false, "Enable fine-tuning mode")
@@ -309,11 +312,8 @@ func (o *DeployOptions) buildWorkspace() *unstructured.Unstructured {
 		klog.V(4).Info("Added LoadBalancer annotation to workspace")
 	}
 
-	// Add the spec fields at the top level (not inside a spec field)
-	spec := o.createWorkspaceSpec()
-	for key, value := range spec {
-		workspace.Object[key] = value
-	}
+	// Add the spec fields under the spec field
+	workspace.Object["spec"] = o.createWorkspaceSpec()
 
 	return workspace
 }
@@ -450,11 +450,50 @@ func (o *DeployOptions) configureInference(spec map[string]interface{}) {
 
 	// Add inference config if specified
 	if o.InferenceConfig != "" {
-		inference["config"] = o.InferenceConfig
-		klog.V(4).Info("Added custom inference configuration")
+		// Create a ConfigMap name from the workspace name
+		configMapName := fmt.Sprintf("%s-inference-config", o.WorkspaceName)
+		inference["config"] = configMapName
+		klog.V(4).Info("Added inference configuration")
 	}
 
 	spec["inference"] = inference
+}
+
+func createInferenceConfigMap(clientset kubernetes.Interface, configFile, workspaceName, namespace string) error {
+	// Read the YAML file
+	yamlData, err := os.ReadFile(configFile)
+	if err != nil {
+		return fmt.Errorf("failed to read inference config file: %w", err)
+	}
+
+	// Create a ConfigMap name from the workspace name
+	configMapName := fmt.Sprintf("%s-inference-config", workspaceName)
+
+	// Create the ConfigMap
+	configMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      configMapName,
+			Namespace: namespace,
+		},
+		Data: map[string]string{
+			"inference_config.yaml": string(yamlData),
+		},
+	}
+
+	// Create the ConfigMap
+	_, err = clientset.CoreV1().ConfigMaps(namespace).Create(context.TODO(), configMap, metav1.CreateOptions{})
+	if err != nil {
+		if !errors.IsAlreadyExists(err) {
+			return fmt.Errorf("failed to create ConfigMap: %w", err)
+		}
+		// If it already exists, update it
+		_, err = clientset.CoreV1().ConfigMaps(namespace).Update(context.TODO(), configMap, metav1.UpdateOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to update ConfigMap: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (o *DeployOptions) showDryRun() error {

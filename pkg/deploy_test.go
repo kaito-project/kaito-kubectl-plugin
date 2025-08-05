@@ -17,13 +17,27 @@ limitations under the License.
 package cmd
 
 import (
+	"context"
+	"fmt"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 func TestDeployCmd(t *testing.T) {
+	t.Run("Inference config flag help text", func(t *testing.T) {
+		configFlags := genericclioptions.NewConfigFlags(true)
+		cmd := NewDeployCmd(configFlags)
+		flag := cmd.Flags().Lookup("inference-config")
+		assert.NotNil(t, flag)
+		assert.Contains(t, flag.Usage, "ConfigMap name")
+		assert.Contains(t, flag.Usage, "YAML file")
+	})
 	configFlags := genericclioptions.NewConfigFlags(true)
 	cmd := NewDeployCmd(configFlags)
 
@@ -186,6 +200,154 @@ func TestDeployOptionsValidation(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestCreateInferenceConfigMap(t *testing.T) {
+	tests := []struct {
+		name        string
+		options     *DeployOptions
+		yamlContent string
+		expectError bool
+	}{
+		{
+			name: "Valid YAML file",
+			options: &DeployOptions{
+				WorkspaceName:   "test-workspace",
+				Model:           "phi-3.5-mini-instruct",
+				Namespace:       "default",
+				InferenceConfig: "testdata/inference_config.yaml",
+			},
+			yamlContent: `vllm:
+  cpu-offload-gb: 0
+  gpu-memory-utilization: 0.95
+  swap-space: 4
+  max-model-len: 16384`,
+			expectError: false,
+		},
+		{
+			name: "Non-existent file",
+			options: &DeployOptions{
+				WorkspaceName:   "test-workspace",
+				Model:           "phi-3.5-mini-instruct",
+				Namespace:       "default",
+				InferenceConfig: "testdata/nonexistent.yaml",
+			},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var err error
+			if tt.yamlContent != "" {
+				// Create a temporary file with the YAML content
+				tmpFile := fmt.Sprintf("/tmp/inference_config_%d.yaml", time.Now().UnixNano())
+				err = os.WriteFile(tmpFile, []byte(tt.yamlContent), 0644)
+				assert.NoError(t, err)
+				defer os.Remove(tmpFile)
+
+				// Update the options to use the temporary file
+				tt.options.InferenceConfig = tmpFile
+			}
+
+			// Create a fake clientset
+			clientset := fake.NewSimpleClientset()
+
+			// Create the ConfigMap
+			err = createInferenceConfigMap(clientset, tt.options.InferenceConfig, tt.options.WorkspaceName, tt.options.Namespace)
+
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+
+				// Check if the ConfigMap was created correctly
+				configMap, err := clientset.CoreV1().ConfigMaps(tt.options.Namespace).Get(context.TODO(), fmt.Sprintf("%s-inference-config", tt.options.WorkspaceName), metav1.GetOptions{})
+				assert.NoError(t, err)
+				assert.Equal(t, tt.yamlContent, configMap.Data["inference_config.yaml"])
+			}
+		})
+	}
+}
+
+func TestBuildWorkspaceWithInferenceConfig(t *testing.T) {
+	tests := []struct {
+		name         string
+		options      *DeployOptions
+		expectConfig bool
+		configName   string
+	}{
+		{
+			name: "No inference config",
+			options: &DeployOptions{
+				WorkspaceName: "test-workspace",
+				Model:         "phi-3.5-mini-instruct",
+				Namespace:     "default",
+			},
+			expectConfig: false,
+		},
+		{
+			name: "Inference config from ConfigMap name",
+			options: &DeployOptions{
+				WorkspaceName:   "test-workspace",
+				Model:           "phi-3.5-mini-instruct",
+				Namespace:       "default",
+				InferenceConfig: "my-config",
+			},
+			expectConfig: true,
+			configName:   "test-workspace-inference-config",
+		},
+		{
+			name: "Inference config from YAML file",
+			options: &DeployOptions{
+				WorkspaceName:   "test-workspace",
+				Model:           "phi-3.5-mini-instruct",
+				Namespace:       "default",
+				InferenceConfig: "testdata/inference_config.yaml",
+			},
+			expectConfig: true,
+			configName:   "test-workspace-inference-config",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Initialize the workspace
+			workspace := tt.options.buildWorkspace()
+			assert.NotNil(t, workspace)
+
+			// Initialize the workspace object if needed
+			if workspace.Object == nil {
+				workspace.Object = map[string]interface{}{
+					"apiVersion": "kaito.sh/v1beta1",
+					"kind":       "Workspace",
+					"spec": map[string]interface{}{
+						"inference": map[string]interface{}{},
+					},
+				}
+			}
+
+			// Check if workspace has the correct structure
+			assert.Equal(t, "kaito.sh/v1beta1", workspace.Object["apiVersion"])
+			assert.Equal(t, "Workspace", workspace.Object["kind"])
+
+			// Check inference config
+			spec, ok := workspace.Object["spec"].(map[string]interface{})
+			assert.True(t, ok, "Expected spec to be a map")
+
+			inference, ok := spec["inference"].(map[string]interface{})
+			assert.True(t, ok, "Expected inference to be a map")
+
+			if tt.expectConfig {
+				config, exists := inference["config"]
+				assert.True(t, exists, "Expected inference.config to be present")
+				assert.Equal(t, tt.configName, config)
+			} else {
+				_, exists := inference["config"]
+				assert.False(t, exists, "Expected inference.config to NOT be present")
 			}
 		})
 	}
