@@ -101,6 +101,69 @@ func TestDeployOptionsValidation(t *testing.T) {
 			expectError: false,
 		},
 		{
+			name: "Tuning mode with model image",
+			options: DeployOptions{
+				WorkspaceName: "test-workspace",
+				Model:         "phi-3.5-mini-instruct",
+				Tuning:        true,
+				TuningMethod:  "qlora",
+				ModelImage:    "myregistry/base:latest",
+				InputURLs:     []string{"https://example.com/data.parquet"},
+				OutputImage:   "myregistry/model:latest",
+			},
+			expectError: false,
+		},
+		{
+			name: "Inference mode with model image - should fail",
+			options: DeployOptions{
+				WorkspaceName: "test-workspace",
+				Model:         "phi-3.5-mini-instruct",
+				ModelImage:    "myregistry/base:latest", // This should cause validation to fail
+			},
+			expectError: true,
+		},
+		{
+			name: "Tuning mode with empty model image",
+			options: DeployOptions{
+				WorkspaceName: "test-workspace",
+				Model:         "phi-3.5-mini-instruct",
+				Tuning:        true,
+				TuningMethod:  "qlora",
+				ModelImage:    "", // Empty model image is valid
+				InputURLs:     []string{"https://example.com/data.parquet"},
+				OutputImage:   "myregistry/model:latest",
+			},
+			expectError: false,
+		},
+		{
+			name: "Tuning mode with all options",
+			options: DeployOptions{
+				WorkspaceName:     "test-workspace",
+				Model:             "phi-3.5-mini-instruct",
+				Tuning:            true,
+				TuningMethod:      "qlora",
+				ModelImage:        "myregistry/base:latest",
+				InputURLs:         []string{"https://example.com/data.parquet"},
+				OutputImage:       "myregistry/model:latest",
+				OutputImageSecret: "my-secret",
+				TuningConfig:      "my-config",
+			},
+			expectError: false,
+		},
+		{
+			name: "Tuning mode with PVC and model image",
+			options: DeployOptions{
+				WorkspaceName: "test-workspace",
+				Model:         "phi-3.5-mini-instruct",
+				Tuning:        true,
+				TuningMethod:  "qlora",
+				ModelImage:    "myregistry/base:latest",
+				InputPVC:      "input-pvc",
+				OutputPVC:     "output-pvc",
+			},
+			expectError: false,
+		},
+		{
 			name: "Inference mode with valid inference flags",
 			options: DeployOptions{
 				WorkspaceName:     "test-workspace",
@@ -268,6 +331,169 @@ func TestCreateInferenceConfigMap(t *testing.T) {
 				configMap, err := clientset.CoreV1().ConfigMaps(tt.options.Namespace).Get(context.TODO(), fmt.Sprintf("%s-inference-config", tt.options.WorkspaceName), metav1.GetOptions{})
 				assert.NoError(t, err)
 				assert.Equal(t, tt.yamlContent, configMap.Data["inference_config.yaml"])
+			}
+		})
+	}
+}
+
+func TestBuildWorkspaceWithModelImage(t *testing.T) {
+	tests := []struct {
+		name        string
+		options     *DeployOptions
+		expectImage bool
+		imageName   string
+	}{
+		{
+			name: "No model image",
+			options: &DeployOptions{
+				WorkspaceName: "test-workspace",
+				Model:         "phi-3.5-mini-instruct",
+				Tuning:        true,
+			},
+			expectImage: false,
+		},
+		{
+			name: "With model image",
+			options: &DeployOptions{
+				WorkspaceName: "test-workspace",
+				Model:         "phi-3.5-mini-instruct",
+				Tuning:        true,
+				ModelImage:    "myregistry/base:latest",
+			},
+			expectImage: true,
+			imageName:   "myregistry/base:latest",
+		},
+		{
+			name: "With model image and tuning config",
+			options: &DeployOptions{
+				WorkspaceName: "test-workspace",
+				Model:         "phi-3.5-mini-instruct",
+				Tuning:        true,
+				ModelImage:    "myregistry/base:latest",
+				TuningConfig:  "my-config",
+			},
+			expectImage: true,
+			imageName:   "myregistry/base:latest",
+		},
+		{
+			name: "With model image and all tuning options",
+			options: &DeployOptions{
+				WorkspaceName:     "test-workspace",
+				Model:             "phi-3.5-mini-instruct",
+				Tuning:            true,
+				ModelImage:        "myregistry/base:latest",
+				TuningConfig:      "my-config",
+				InputURLs:         []string{"https://example.com/data.parquet"},
+				OutputImage:       "myregistry/output:latest",
+				OutputImageSecret: "my-secret",
+			},
+			expectImage: true,
+			imageName:   "myregistry/base:latest",
+		},
+		{
+			name: "With model image and PVC options",
+			options: &DeployOptions{
+				WorkspaceName: "test-workspace",
+				Model:         "phi-3.5-mini-instruct",
+				Tuning:        true,
+				ModelImage:    "myregistry/base:latest",
+				InputPVC:      "input-pvc",
+				OutputPVC:     "output-pvc",
+			},
+			expectImage: true,
+			imageName:   "myregistry/base:latest",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			workspace := tt.options.buildWorkspace()
+			assert.NotNil(t, workspace)
+
+			// Initialize the workspace object if needed
+			if workspace.Object == nil {
+				workspace.Object = map[string]interface{}{
+					"apiVersion": "kaito.sh/v1beta1",
+					"kind":       "Workspace",
+					"spec": map[string]interface{}{
+						"tuning": map[string]interface{}{
+							"preset": map[string]interface{}{},
+						},
+					},
+				}
+			}
+
+			// Check if workspace has the correct structure
+			assert.Equal(t, "kaito.sh/v1beta1", workspace.Object["apiVersion"])
+			assert.Equal(t, "Workspace", workspace.Object["kind"])
+
+			// Check tuning config
+			spec, ok := workspace.Object["spec"].(map[string]interface{})
+			assert.True(t, ok, "Expected spec to be a map")
+
+			tuning, ok := spec["tuning"].(map[string]interface{})
+			assert.True(t, ok, "Expected tuning to be a map")
+
+			preset, ok := tuning["preset"].(map[string]interface{})
+			assert.True(t, ok, "Expected preset to be a map")
+
+			// Check model image
+			if tt.expectImage {
+				presetOptions, ok := preset["presetOptions"].(map[string]interface{})
+				assert.True(t, ok, "Expected presetOptions to be a map")
+				image, exists := presetOptions["image"]
+				assert.True(t, exists, "Expected image to be present")
+				assert.Equal(t, tt.imageName, image)
+			} else {
+				_, exists := preset["presetOptions"]
+				assert.False(t, exists, "Expected presetOptions to NOT be present")
+			}
+
+			// Check other tuning configuration
+			if tt.options.TuningConfig != "" {
+				config, exists := tuning["config"]
+				assert.True(t, exists, "Expected tuning.config to be present")
+				assert.Equal(t, tt.options.TuningConfig, config)
+			}
+
+			if len(tt.options.InputURLs) > 0 {
+				input, ok := tuning["input"].(map[string]interface{})
+				assert.True(t, ok, "Expected input to be a map")
+				urls, exists := input["urls"]
+				assert.True(t, exists, "Expected input.urls to be present")
+				assert.Equal(t, tt.options.InputURLs, urls)
+			}
+
+			if tt.options.InputPVC != "" {
+				input, ok := tuning["input"].(map[string]interface{})
+				assert.True(t, ok, "Expected input to be a map")
+				pvc, exists := input["pvc"]
+				assert.True(t, exists, "Expected input.pvc to be present")
+				assert.Equal(t, tt.options.InputPVC, pvc)
+			}
+
+			if tt.options.OutputImage != "" {
+				output, ok := tuning["output"].(map[string]interface{})
+				assert.True(t, ok, "Expected output to be a map")
+				image, exists := output["image"]
+				assert.True(t, exists, "Expected output.image to be present")
+				assert.Equal(t, tt.options.OutputImage, image)
+			}
+
+			if tt.options.OutputPVC != "" {
+				output, ok := tuning["output"].(map[string]interface{})
+				assert.True(t, ok, "Expected output to be a map")
+				pvc, exists := output["pvc"]
+				assert.True(t, exists, "Expected output.pvc to be present")
+				assert.Equal(t, tt.options.OutputPVC, pvc)
+			}
+
+			if tt.options.OutputImageSecret != "" {
+				output, ok := tuning["output"].(map[string]interface{})
+				assert.True(t, ok, "Expected output to be a map")
+				secret, exists := output["imageSecret"]
+				assert.True(t, exists, "Expected output.imageSecret to be present")
+				assert.Equal(t, tt.options.OutputImageSecret, secret)
 			}
 		})
 	}
