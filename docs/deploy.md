@@ -41,11 +41,11 @@ kaito deploy [flags]
 
 These flags can only be used when `--tuning` is **not** enabled (default inference mode):
 
-| Flag                           | Type     | Description                     |
-| ------------------------------ | -------- | ------------------------------- |
-| `--model-access-secret string` | string   | Secret for private model access |
-| `--adapters strings`           | []string | Model adapters to load          |
-| `--inference-config string`    | string   | Custom inference configuration  |
+| Flag                           | Type     | Description                                                                |
+| ------------------------------ | -------- | -------------------------------------------------------------------------- |
+| `--model-access-secret string` | string   | Secret for private model access                                            |
+| `--adapters strings`           | []string | Model adapters to load                                                     |
+| `--inference-config string`    | string   | Custom inference configuration (either a YAML file path or ConfigMap name) |
 
 ### Fine-tuning Flags
 
@@ -73,6 +73,31 @@ These flags can only be used when `--tuning` is **enabled**:
 kubectl kaito deploy --workspace-name llama-workspace \
 --model llama-3.1-8b-instruct \
 --model-access-secret hf-token
+```
+
+### Inference with Custom Configuration
+
+```bash
+# Deploy with custom inference configuration from a YAML file
+kubectl kaito deploy \
+  --workspace-name llama-workspace \
+  --model llama-3.1-8b-instruct \
+  --model-access-secret hf-token \
+  --inference-config config.yaml
+
+# Example config.yaml:
+# vllm:
+#   cpu-offload-gb: 0
+#   gpu-memory-utilization: 0.95
+#   swap-space: 4
+#   max-model-len: 16384
+
+# Deploy with custom inference configuration from an existing ConfigMap
+kubectl kaito deploy \
+  --workspace-name llama-workspace \
+  --model llama-3.1-8b-instruct \
+  --model-access-secret hf-token \
+  --inference-config my-config
 ```
 
 ### Deployment with Specific Instance Type
@@ -153,6 +178,15 @@ kubectl kaito deploy \
 - This instructs the Kaito operator to create a LoadBalancer service for external access.
 - Only works with inference workspaces (cannot be used with `--tuning`)
 - May incur additional cloud provider costs for the LoadBalancer service
+
+**Inference Configuration Notes:**
+
+- When providing a YAML file for `--inference-config`, the plugin will:
+  1. Create a ConfigMap named `{workspace-name}-inference-config` in the same namespace
+  2. Store the YAML file contents in the ConfigMap
+  3. Reference this ConfigMap in the workspace configuration
+- If a ConfigMap with the same name already exists, it will be updated with the new configuration
+- When providing an existing ConfigMap name, the plugin will reference it directly in the workspace configuration
 
 ## Required Parameters by Mode
 
