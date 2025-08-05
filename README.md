@@ -65,10 +65,10 @@ kubectl krew install kaito
 curl -sO https://raw.githubusercontent.com/kaito-project/kaito-kubectl-plugin/refs/heads/main/hack/generate-krew-manifest.sh
 
 # Generate manifest for a specific version with real SHA256 values
-chmod +x ./generate-krew-manifest.sh && ./generate-krew-manifest.sh v0.1.0
+chmod +x ./generate-krew-manifest.sh && ./generate-krew-manifest.sh v0.1.1
 
 # Install the generated manifest
-kubectl krew install --manifest=krew/kaito-v0.1.0.yaml
+kubectl krew install --manifest=krew/kaito-v0.1.1.yaml
 ```
 
 ### Manual Installation
