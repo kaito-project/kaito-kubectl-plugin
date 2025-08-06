@@ -52,38 +52,27 @@ kubectl kaito chat --workspace-name my-workspace
 
 > **Prerequisites**: Install [krew](https://krew.sigs.k8s.io/docs/user-guide/setup/install/) if you haven't already.
 
-#### From Krew Index (Coming Soon)
+#### From Krew Index
 
 ```bash
 kubectl krew install kaito
 ```
 
-#### Generate Krew Manifest Locally
+#### Generate Krew Manifest Locally From specific release tag
 
 ```bash
 # Get the script
 curl -sO https://raw.githubusercontent.com/kaito-project/kaito-kubectl-plugin/refs/heads/main/hack/generate-krew-manifest.sh
 
+export RELEASE_TAG=v0.1.1
 # Generate manifest for a specific version with real SHA256 values
-chmod +x ./generate-krew-manifest.sh && ./generate-krew-manifest.sh v0.1.1
+chmod +x ./generate-krew-manifest.sh && ./generate-krew-manifest.sh $RELEASE_TAG
 
 # Install the generated manifest
-kubectl krew install --manifest=krew/kaito-v0.1.1.yaml
+kubectl krew install --manifest=krew/kaito-$RELEASE_TAG.yaml
 ```
 
-### Manual Installation
-
-#### Download Release Pre-built Binary
-
-1. Download the latest binary from the [releases page](https://github.com/kaito-project/kaito-kubectl-plugin/releases)
-2. Extract and place the binary in your `$PATH` as `kubectl-kaito`
-3. Make it executable:
-
-   ```bash
-   chmod +x kubectl-kaito
-   ```
-
-### Verify Installation
+#### Verify Installation
 
 ```bash
 kubectl kaito --help
@@ -166,6 +155,12 @@ cd kaito-kubectl-plugin
 
 # Build the plugin
 make build
+
+# Make sure to uninstall the krew plugin to be able to run the local binary
+kubectl krew uninstall kaito
+
+# Run the cli from the local binary
+./bin/kubectl-kaito --help
 ```
 
 ## License
