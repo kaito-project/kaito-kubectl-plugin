@@ -410,28 +410,12 @@ func TestBuildWorkspaceWithModelImage(t *testing.T) {
 			workspace := tt.options.buildWorkspace()
 			assert.NotNil(t, workspace)
 
-			// Initialize the workspace object if needed
-			if workspace.Object == nil {
-				workspace.Object = map[string]interface{}{
-					"apiVersion": "kaito.sh/v1beta1",
-					"kind":       "Workspace",
-					"spec": map[string]interface{}{
-						"tuning": map[string]interface{}{
-							"preset": map[string]interface{}{},
-						},
-					},
-				}
-			}
-
 			// Check if workspace has the correct structure
 			assert.Equal(t, "kaito.sh/v1beta1", workspace.Object["apiVersion"])
 			assert.Equal(t, "Workspace", workspace.Object["kind"])
 
-			// Check tuning config
-			spec, ok := workspace.Object["spec"].(map[string]interface{})
-			assert.True(t, ok, "Expected spec to be a map")
-
-			tuning, ok := spec["tuning"].(map[string]interface{})
+			// Check tuning config (at root level, not under spec)
+			tuning, ok := workspace.Object["tuning"].(map[string]interface{})
 			assert.True(t, ok, "Expected tuning to be a map")
 
 			preset, ok := tuning["preset"].(map[string]interface{})
@@ -461,7 +445,13 @@ func TestBuildWorkspaceWithModelImage(t *testing.T) {
 				assert.True(t, ok, "Expected input to be a map")
 				urls, exists := input["urls"]
 				assert.True(t, exists, "Expected input.urls to be present")
-				assert.Equal(t, tt.options.InputURLs, urls)
+				// URLs are converted to []interface{} for YAML marshaling
+				urlsSlice, ok := urls.([]interface{})
+				assert.True(t, ok, "Expected urls to be []interface{}")
+				assert.Equal(t, len(tt.options.InputURLs), len(urlsSlice))
+				for i, url := range tt.options.InputURLs {
+					assert.Equal(t, url, urlsSlice[i])
+				}
 			}
 
 			if tt.options.InputPVC != "" {
@@ -499,6 +489,26 @@ func TestBuildWorkspaceWithModelImage(t *testing.T) {
 	}
 }
 
+func TestBuildWorkspaceWithEmptyInference(t *testing.T) {
+	options := &DeployOptions{
+		WorkspaceName: "test-workspace",
+		Model:         "phi-3.5-mini-instruct",
+		Namespace:     "default",
+	}
+
+	workspace := options.buildWorkspace()
+	assert.NotNil(t, workspace)
+
+	// Check if workspace has the correct structure
+	assert.Equal(t, "kaito.sh/v1beta1", workspace.Object["apiVersion"])
+	assert.Equal(t, "Workspace", workspace.Object["kind"])
+
+	// Check inference config (at root level, not under spec)
+	inference, ok := workspace.Object["inference"].(map[string]interface{})
+	assert.True(t, ok, "Expected inference to be a map")
+	assert.NotNil(t, inference, "Expected inference to be initialized")
+}
+
 func TestBuildWorkspaceWithInferenceConfig(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -524,7 +534,7 @@ func TestBuildWorkspaceWithInferenceConfig(t *testing.T) {
 				InferenceConfig: "my-config",
 			},
 			expectConfig: true,
-			configName:   "test-workspace-inference-config",
+			configName:   "my-config", // Uses the provided ConfigMap name directly
 		},
 		{
 			name: "Inference config from YAML file",
@@ -532,39 +542,33 @@ func TestBuildWorkspaceWithInferenceConfig(t *testing.T) {
 				WorkspaceName:   "test-workspace",
 				Model:           "phi-3.5-mini-instruct",
 				Namespace:       "default",
-				InferenceConfig: "testdata/inference_config.yaml",
+				InferenceConfig: "/tmp/test_inference_config.yaml", // Must be an actual file path
 			},
 			expectConfig: true,
-			configName:   "test-workspace-inference-config",
+			configName:   "test-workspace-inference-config", // Creates a new ConfigMap with this name
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Create temporary file if needed
+			if tt.name == "Inference config from YAML file" {
+				// Create a temporary YAML file
+				err := os.WriteFile("/tmp/test_inference_config.yaml", []byte("test: config"), 0644)
+				assert.NoError(t, err)
+				defer os.Remove("/tmp/test_inference_config.yaml")
+			}
+
 			// Initialize the workspace
 			workspace := tt.options.buildWorkspace()
 			assert.NotNil(t, workspace)
-
-			// Initialize the workspace object if needed
-			if workspace.Object == nil {
-				workspace.Object = map[string]interface{}{
-					"apiVersion": "kaito.sh/v1beta1",
-					"kind":       "Workspace",
-					"spec": map[string]interface{}{
-						"inference": map[string]interface{}{},
-					},
-				}
-			}
 
 			// Check if workspace has the correct structure
 			assert.Equal(t, "kaito.sh/v1beta1", workspace.Object["apiVersion"])
 			assert.Equal(t, "Workspace", workspace.Object["kind"])
 
-			// Check inference config
-			spec, ok := workspace.Object["spec"].(map[string]interface{})
-			assert.True(t, ok, "Expected spec to be a map")
-
-			inference, ok := spec["inference"].(map[string]interface{})
+			// Check inference config (at root level, not under spec)
+			inference, ok := workspace.Object["inference"].(map[string]interface{})
 			assert.True(t, ok, "Expected inference to be a map")
 
 			if tt.expectConfig {
@@ -632,6 +636,95 @@ func TestBuildWorkspaceWithLoadBalancer(t *testing.T) {
 					assert.False(t, exists, "Expected kaito.sh/enable-lb annotation to NOT be present when LoadBalancer is disabled")
 				}
 			}
+		})
+	}
+}
+
+func TestBuildWorkspaceStructure(t *testing.T) {
+	tests := []struct {
+		name    string
+		options *DeployOptions
+	}{
+		{
+			name: "Inference workspace structure",
+			options: &DeployOptions{
+				WorkspaceName:     "test-workspace",
+				Namespace:         "default",
+				Model:             "llama-3.1-8b-instruct",
+				InstanceType:      "Standard_NC64as_T4_v3",
+				Count:             2,
+				ModelAccessSecret: "hf-token",
+				InferenceConfig:   "my-config",
+			},
+		},
+		{
+			name: "Tuning workspace structure",
+			options: &DeployOptions{
+				WorkspaceName:     "test-workspace",
+				Namespace:         "default",
+				Model:             "phi-3.5-mini-instruct",
+				InstanceType:      "Standard_NC6s_v3",
+				Tuning:            true,
+				TuningMethod:      "qlora",
+				InputURLs:         []string{"https://example.com/data.parquet"},
+				OutputImage:       "myregistry/model:latest",
+				OutputImageSecret: "my-secret",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			workspace := tt.options.buildWorkspace()
+			assert.NotNil(t, workspace)
+
+			// Check basic structure
+			assert.Equal(t, "kaito.sh/v1beta1", workspace.Object["apiVersion"])
+			assert.Equal(t, "Workspace", workspace.Object["kind"])
+
+			// Check metadata
+			metadata, ok := workspace.Object["metadata"].(map[string]interface{})
+			assert.True(t, ok, "Expected metadata to be a map")
+			assert.Equal(t, tt.options.WorkspaceName, metadata["name"])
+			assert.Equal(t, tt.options.Namespace, metadata["namespace"])
+
+			// Check resource field is at root level
+			resource, ok := workspace.Object["resource"].(map[string]interface{})
+			assert.True(t, ok, "Expected resource to be a map at root level")
+			assert.Equal(t, tt.options.InstanceType, resource["instanceType"])
+
+			if tt.options.Count > 0 {
+				assert.Equal(t, int64(tt.options.Count), resource["count"])
+			}
+
+			labelSelector, ok := resource["labelSelector"].(map[string]interface{})
+			assert.True(t, ok, "Expected labelSelector to be a map")
+			matchLabels, ok := labelSelector["matchLabels"].(map[string]interface{})
+			assert.True(t, ok, "Expected matchLabels to be a map")
+			assert.NotNil(t, matchLabels)
+
+			// Check inference or tuning is at root level
+			if tt.options.Tuning {
+				tuning, ok := workspace.Object["tuning"].(map[string]interface{})
+				assert.True(t, ok, "Expected tuning to be a map at root level")
+				assert.NotNil(t, tuning)
+
+				// Verify inference is not present
+				_, hasInference := workspace.Object["inference"]
+				assert.False(t, hasInference, "Expected inference to NOT be present in tuning mode")
+			} else {
+				inference, ok := workspace.Object["inference"].(map[string]interface{})
+				assert.True(t, ok, "Expected inference to be a map at root level")
+				assert.NotNil(t, inference)
+
+				// Verify tuning is not present
+				_, hasTuning := workspace.Object["tuning"]
+				assert.False(t, hasTuning, "Expected tuning to NOT be present in inference mode")
+			}
+
+			// Verify spec field is NOT present (fields should be at root level)
+			_, hasSpec := workspace.Object["spec"]
+			assert.False(t, hasSpec, "Expected spec field to NOT be present - fields should be at root level")
 		})
 	}
 }

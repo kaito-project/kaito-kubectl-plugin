@@ -257,6 +257,24 @@ func (o *DeployOptions) Run() error {
 		return fmt.Errorf("failed to create dynamic client: %w", err)
 	}
 
+	// Create Kubernetes client
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		klog.Errorf("Failed to create Kubernetes client: %v", err)
+		return fmt.Errorf("failed to create Kubernetes client: %w", err)
+	}
+
+	// Create ConfigMap if inference config is a file path
+	if !o.Tuning && o.InferenceConfig != "" {
+		// Check if it's a file path
+		if _, statErr := os.Stat(o.InferenceConfig); statErr == nil {
+			if createErr := createInferenceConfigMap(clientset, o.InferenceConfig, o.WorkspaceName, o.Namespace); createErr != nil {
+				klog.Errorf("Failed to create inference ConfigMap: %v", createErr)
+				return fmt.Errorf("failed to create inference ConfigMap: %w", createErr)
+			}
+		}
+	}
+
 	// Create workspace
 	workspace := o.buildWorkspace()
 
@@ -288,111 +306,100 @@ func (o *DeployOptions) Run() error {
 	return nil
 }
 
+// buildWorkspace creates a new Workspace object with the specified configuration
 func (o *DeployOptions) buildWorkspace() *unstructured.Unstructured {
 	klog.V(4).Info("Building workspace configuration")
 
-	// Create the base workspace object
-	workspace := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "kaito.sh/v1beta1",
-			"kind":       "Workspace",
-			"metadata": map[string]interface{}{
-				"name":      o.WorkspaceName,
-				"namespace": o.Namespace,
-			},
-		},
+	// Create and initialize the workspace object
+	workspace := o.initWorkspaceObject()
+
+	// Set resource configuration
+	o.setResourceConfig(workspace)
+
+	// Configure inference or tuning
+	if o.Tuning {
+		o.setTuningConfig(workspace)
+	} else {
+		o.setInferenceConfig(workspace)
 	}
 
 	// Add LoadBalancer annotation if requested
 	if o.EnableLoadBalancer {
-		metadata := workspace.Object["metadata"].(map[string]interface{})
-		if metadata["annotations"] == nil {
-			metadata["annotations"] = map[string]interface{}{}
-		}
-		annotations := metadata["annotations"].(map[string]interface{})
-		annotations["kaito.sh/enable-lb"] = "true"
-		klog.V(4).Info("Added LoadBalancer annotation to workspace")
+		o.setLoadBalancerAnnotation(workspace)
 	}
-
-	// Add the spec fields under the spec field
-	workspace.Object["spec"] = o.createWorkspaceSpec()
 
 	return workspace
 }
 
-func (o *DeployOptions) createWorkspaceSpec() map[string]interface{} {
-	klog.V(4).Info("Creating workspace specification")
-
-	spec := map[string]interface{}{
-		"resource": map[string]interface{}{
-			"instanceType": o.InstanceType,
-		},
+// initWorkspaceObject creates and initializes a new Workspace object with basic metadata
+func (o *DeployOptions) initWorkspaceObject() *unstructured.Unstructured {
+	workspace := &unstructured.Unstructured{
+		Object: make(map[string]interface{}),
 	}
 
-	// Add node count if specified
-	if o.Count > 0 {
-		spec["resource"].(map[string]interface{})["count"] = o.Count
-		klog.V(4).Infof("Set node count to %d", o.Count)
-	}
+	workspace.SetAPIVersion("kaito.sh/v1beta1")
+	workspace.SetKind("Workspace")
+	workspace.SetName(o.WorkspaceName)
+	workspace.SetNamespace(o.Namespace)
 
-	// Add label selector - use provided one or create a default
-	var labelSelector map[string]interface{}
-	if len(o.LabelSelector) > 0 {
-		labelSelector = map[string]interface{}{
-			"matchLabels": o.LabelSelector,
-		}
-		klog.V(4).Infof("Added label selector: %v", o.LabelSelector)
-	} else {
-		// Default label selector using workspace name
-		labelSelector = map[string]interface{}{
+	return workspace
+}
+
+// setResourceConfig sets the resource configuration at the root level
+func (o *DeployOptions) setResourceConfig(workspace *unstructured.Unstructured) {
+	resource := map[string]interface{}{
+		"instanceType": o.InstanceType,
+		"labelSelector": map[string]interface{}{
 			"matchLabels": map[string]interface{}{
 				"kaito.sh/workspace": o.WorkspaceName,
 			},
-		}
-		klog.V(4).Infof("Added default label selector for workspace: %s", o.WorkspaceName)
-	}
-	spec["resource"].(map[string]interface{})["labelSelector"] = labelSelector
-
-	// Configure inference or tuning
-	if o.Tuning {
-		o.configureTuning(spec)
-	} else {
-		o.configureInference(spec)
+		},
 	}
 
-	return spec
+	if o.Count > 0 {
+		resource["count"] = int64(o.Count)
+	}
+
+	if len(o.LabelSelector) > 0 {
+		resource["labelSelector"].(map[string]interface{})["matchLabels"] = o.LabelSelector
+	}
+
+	if err := unstructured.SetNestedField(workspace.Object, resource, "resource"); err != nil {
+		klog.Errorf("Failed to set resource field: %v", err)
+	}
 }
 
-func (o *DeployOptions) configureTuning(spec map[string]interface{}) {
-	klog.V(3).Info("Configuring tuning mode")
-	// Tuning configuration
+// setTuningConfig sets the tuning configuration at the root level
+func (o *DeployOptions) setTuningConfig(workspace *unstructured.Unstructured) {
 	tuning := map[string]interface{}{}
 
 	if o.TuningMethod != "" {
 		tuning["method"] = o.TuningMethod
 	}
 
+	// Add model preset
 	if o.Model != "" {
 		preset := map[string]interface{}{
 			"name": o.Model,
 		}
 
-		// Add model image if specified
 		if o.ModelImage != "" {
-			if preset["presetOptions"] == nil {
-				preset["presetOptions"] = map[string]interface{}{}
+			preset["presetOptions"] = map[string]interface{}{
+				"image": o.ModelImage,
 			}
-			presetOptions := preset["presetOptions"].(map[string]interface{})
-			presetOptions["image"] = o.ModelImage
-			klog.V(4).Info("Added custom model image")
 		}
 
 		tuning["preset"] = preset
 	}
 
+	// Add input configuration
 	if len(o.InputURLs) > 0 {
+		urls := make([]interface{}, len(o.InputURLs))
+		for i, url := range o.InputURLs {
+			urls[i] = url
+		}
 		tuning["input"] = map[string]interface{}{
-			"urls": o.InputURLs,
+			"urls": urls,
 		}
 	} else if o.InputPVC != "" {
 		tuning["input"] = map[string]interface{}{
@@ -400,6 +407,7 @@ func (o *DeployOptions) configureTuning(spec map[string]interface{}) {
 		}
 	}
 
+	// Add output configuration
 	if o.OutputImage != "" {
 		tuning["output"] = map[string]interface{}{
 			"image": o.OutputImage,
@@ -410,6 +418,7 @@ func (o *DeployOptions) configureTuning(spec map[string]interface{}) {
 		}
 	}
 
+	// Add output image secret if specified
 	if o.OutputImageSecret != "" {
 		if tuning["output"] == nil {
 			tuning["output"] = map[string]interface{}{}
@@ -417,60 +426,71 @@ func (o *DeployOptions) configureTuning(spec map[string]interface{}) {
 		tuning["output"].(map[string]interface{})["imageSecret"] = o.OutputImageSecret
 	}
 
+	// Add tuning config if specified
 	if o.TuningConfig != "" {
 		tuning["config"] = o.TuningConfig
 	}
 
-	spec["tuning"] = tuning
+	if err := unstructured.SetNestedField(workspace.Object, tuning, "tuning"); err != nil {
+		klog.Errorf("Failed to set tuning field: %v", err)
+	}
 }
 
-func (o *DeployOptions) configureInference(spec map[string]interface{}) {
-	klog.V(3).Info("Configuring inference mode")
-	// Inference configuration
+// setInferenceConfig sets the inference configuration at the root level
+func (o *DeployOptions) setInferenceConfig(workspace *unstructured.Unstructured) {
 	inference := map[string]interface{}{}
 
+	// Add model preset
 	if o.Model != "" {
-		inference["preset"] = map[string]interface{}{
+		preset := map[string]interface{}{
 			"name": o.Model,
 		}
-	}
 
-	// Add model access secret if specified
-	if o.ModelAccessSecret != "" {
-		// Add modelAccessSecret under presetOptions
-		if inference["preset"] == nil {
-			inference["preset"] = map[string]interface{}{
-				"name": o.Model,
-				"presetOptions": map[string]interface{}{
-					"modelAccessSecret": o.ModelAccessSecret,
-				},
+		if o.ModelAccessSecret != "" {
+			preset["presetOptions"] = map[string]interface{}{
+				"modelAccessSecret": o.ModelAccessSecret,
 			}
-		} else {
-			preset := inference["preset"].(map[string]interface{})
-			if preset["presetOptions"] == nil {
-				preset["presetOptions"] = map[string]interface{}{}
-			}
-			presetOptions := preset["presetOptions"].(map[string]interface{})
-			presetOptions["modelAccessSecret"] = o.ModelAccessSecret
 		}
-		klog.V(4).Info("Added private model access configuration")
+
+		inference["preset"] = preset
 	}
 
 	// Add adapters if specified
 	if len(o.Adapters) > 0 {
-		inference["adapters"] = o.Adapters
-		klog.V(4).Infof("Added adapters: %v", o.Adapters)
+		adapters := make([]interface{}, len(o.Adapters))
+		for i, adapter := range o.Adapters {
+			adapters[i] = adapter
+		}
+		inference["adapters"] = adapters
 	}
 
 	// Add inference config if specified
 	if o.InferenceConfig != "" {
-		// Create a ConfigMap name from the workspace name
-		configMapName := fmt.Sprintf("%s-inference-config", o.WorkspaceName)
-		inference["config"] = configMapName
-		klog.V(4).Info("Added inference configuration")
+		// Check if it's a file path
+		if _, statErr := os.Stat(o.InferenceConfig); statErr == nil {
+			// Use the ConfigMap name that will be created
+			configMapName := fmt.Sprintf("%s-inference-config", o.WorkspaceName)
+			inference["config"] = configMapName
+		} else {
+			// Use the provided ConfigMap name directly
+			inference["config"] = o.InferenceConfig
+		}
 	}
 
-	spec["inference"] = inference
+	if err := unstructured.SetNestedField(workspace.Object, inference, "inference"); err != nil {
+		klog.Errorf("Failed to set inference field: %v", err)
+	}
+}
+
+// setLoadBalancerAnnotation adds the LoadBalancer annotation to the workspace
+func (o *DeployOptions) setLoadBalancerAnnotation(workspace *unstructured.Unstructured) {
+	metadata := workspace.Object["metadata"].(map[string]interface{})
+	if metadata["annotations"] == nil {
+		metadata["annotations"] = map[string]interface{}{}
+	}
+	annotations := metadata["annotations"].(map[string]interface{})
+	annotations["kaito.sh/enable-lb"] = "true"
+	klog.V(4).Info("Added LoadBalancer annotation to workspace")
 }
 
 func createInferenceConfigMap(clientset kubernetes.Interface, configFile, workspaceName, namespace string) error {
