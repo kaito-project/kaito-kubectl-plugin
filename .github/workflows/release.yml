@@ -86,3 +86,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_CURRENT_TAG: ${{ github.event.inputs.tag }}
+      
+      - name: Update new version in krew-index
+        uses: rajatjindal/krew-release-bot@v0.0.47
+        with:
+          krew_template_file: ./krew/kaito.yaml
