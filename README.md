@@ -14,6 +14,7 @@ kubectl-kaito simplifies AI model deployment on Kubernetes by providing an intui
 ![kubectl-kaito Demo](docs/kubectl-kaito-demo.gif)
 
 - **One-command deployment** Deploy AI models with a single command that automatically provisions GPU nodes and configures the inference stack
+- **HuggingFace model support** Deploy any model from HuggingFace by using its model ID (e.g., `Qwen/Qwen3-4B-Instruct-2507`)
 - **Real-time monitoring** Monitor workspace deployment status with real-time conditions, NodeClaim tracking, and detailed health checks
 - **OpenAI-compatible APIs** Interact with deployed models through an OpenAI-compatible chat interface with customizable system prompts
 - **Model discovery** Browse and discover Kaito pre-configured AI models with detailed specifications and GPU requirements
@@ -22,13 +23,18 @@ kubectl-kaito simplifies AI model deployment on Kubernetes by providing an intui
 ## Quick Start
 
 ```bash
-# List available models
+# List available models or use a HuggingFace model ID
 kubectl kaito models list
 
-# Deploy a model for inference
+# Deploy a Kaito preset model for inference
 kubectl kaito deploy --workspace-name my-workspace \
 --model phi-3.5-mini-instruct \
 --instance-type Standard_NC6s_v3
+
+# Or deploy any HuggingFace model
+kubectl kaito deploy --workspace-name my-workspace \
+--model Qwen/Qwen3-4B-Instruct-2507 \
+--model-access-secret hf-token
 
 # Check deployment status
 kubectl kaito status --workspace-name my-workspace
@@ -96,6 +102,23 @@ kubectl kaito status --workspace-name phi-workspace --watch
 kubectl kaito chat --workspace-name phi-workspace
 ```
 
+### Deploy Any HuggingFace Model
+
+```bash
+# Create a secret with your HuggingFace token
+kubectl create secret generic hf-token --from-literal=HF_TOKEN=your_token
+
+# Deploy any HuggingFace model using its model ID
+kubectl kaito deploy \
+  --workspace-name my-llama \
+  --model Qwen/Qwen3-4B-Instruct-2507 \
+  --model-access-secret hf-token \
+  --instance-type Standard_NC24ads_A100_v4
+
+# Kaito automatically generates the preset configuration
+# and validates the model architecture against vLLM
+```
+
 ### Fine-tuning Workflow
 
 ```bash
@@ -114,20 +137,6 @@ kubectl kaito deploy \
   --workspace-name phi-tuned \
   --model phi-3.5-mini-instruct \
   --adapters phi-adapter="myregistry.azurecr.io/phi-tuned:v1"
-```
-
-### Multi-GPU Large Model Deployment
-
-```bash
-# Deploy Llama-2 70B across multiple nodes
-kubectl create secret generic hf-token --from-literal=token=your_token
-
-kubectl kaito deploy \
-  --workspace-name large-llama \
-  --model llama-2-70b \
-  --model-access-secret hf-token \
-  --instance-type Standard_NC24ads_A100_v4 \
-  --count 4
 ```
 
 ## Commands

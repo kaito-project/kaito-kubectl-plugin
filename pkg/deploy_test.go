@@ -241,6 +241,31 @@ func TestDeployOptionsValidation(t *testing.T) {
 			expectError: false,
 		},
 		{
+			name: "HuggingFace model ID - valid",
+			options: DeployOptions{
+				WorkspaceName:     "test-workspace",
+				Model:             "Qwen/Qwen3-4B-Instruct-2507",
+				ModelAccessSecret: "hf-token",
+			},
+			expectError: false,
+		},
+		{
+			name: "HuggingFace model ID - no secret",
+			options: DeployOptions{
+				WorkspaceName: "test-workspace",
+				Model:         "microsoft/Phi-3.5-mini-instruct",
+			},
+			expectError: false,
+		},
+		{
+			name: "HuggingFace model ID - invalid missing model name",
+			options: DeployOptions{
+				WorkspaceName: "test-workspace",
+				Model:         "meta-llama/",
+			},
+			expectError: true,
+		},
+		{
 			name: "Tuning mode with LoadBalancer - should fail",
 			options: DeployOptions{
 				WorkspaceName:      "test-workspace",

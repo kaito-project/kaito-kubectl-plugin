@@ -76,10 +76,16 @@ This command supports both inference and fine-tuning scenarios:
 - Inference: Deploy models for real-time inference with OpenAI-compatible APIs
 - Tuning: Fine-tune existing models with your own datasets using methods like QLoRA
 
+You can deploy either a Kaito preset model (e.g., phi-3.5-mini-instruct) or any
+HuggingFace model by specifying its model ID (e.g., Qwen/Qwen3-4B-Instruct-2507).
+
 The workspace will automatically provision the required GPU resources and deploy
 the specified model according to Kaito's preset configurations.`,
-		Example: `  # Deploy Llama-2 7B for inference
-  kubectl kaito deploy --workspace-name llama-workspace --model llama-2-7b
+		Example: `  # Deploy a Kaito preset model for inference
+  kubectl kaito deploy --workspace-name llama-workspace --model llama-3.1-8b-instruct
+
+  # Deploy any HuggingFace model
+  kubectl kaito deploy --workspace-name my-workspace --model Qwen/Qwen3-4B-Instruct-2507 --model-access-secret hf-token
 
   # Deploy with specific instance type, count, and private model access
   kubectl kaito deploy --workspace-name phi-workspace --model phi-3.5-mini-instruct --instance-type Standard_NC6s_v3 --count 2 --model-access-secret my-secret

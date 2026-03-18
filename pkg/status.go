@@ -272,6 +272,11 @@ func (o *StatusOptions) printDeploymentStatus(workspace *unstructured.Unstructur
 		return
 	}
 
+	// Print high-level workspace state if available
+	if state, found := statusMap["state"]; found {
+		fmt.Printf("State: %v\n", state)
+	}
+
 	o.printConditionStatuses(statusMap)
 	o.printWorkerNodesList(statusMap)
 

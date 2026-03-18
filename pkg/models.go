@@ -165,12 +165,29 @@ func getSupportedModels() []Model {
 	return models
 }
 
-// ValidateModelName checks if the provided model name is supported by Kaito
+// IsHuggingFaceModel checks if the model name is a HuggingFace model ID (contains '/')
+func IsHuggingFaceModel(modelName string) bool {
+	return strings.Contains(modelName, "/")
+}
+
+// ValidateModelName checks if the provided model name is supported by Kaito.
+// Accepts both built-in Kaito preset names and HuggingFace model IDs (e.g., "Qwen/Qwen3-4B-Instruct-2507").
 func ValidateModelName(modelName string) error {
 	klog.V(4).Infof("Validating model name: %s", modelName)
 
 	if modelName == "" {
 		return fmt.Errorf("model name cannot be empty")
+	}
+
+	// HuggingFace model IDs (containing '/') are always accepted.
+	// Kaito dynamically generates presets for any valid HuggingFace model.
+	if IsHuggingFaceModel(modelName) {
+		parts := strings.SplitN(modelName, "/", 2)
+		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+			return fmt.Errorf("invalid HuggingFace model ID '%s': expected format 'org/model-name'", modelName)
+		}
+		klog.V(4).Infof("Model %s is a valid HuggingFace model ID", modelName)
+		return nil
 	}
 
 	models := getSupportedModels()
@@ -197,6 +214,7 @@ func ValidateModelName(modelName string) error {
 	} else {
 		suggestionText = "\n\nUse 'kubectl kaito models list' to see all supported models."
 	}
+	suggestionText += "\n\n💡 You can also use any HuggingFace model ID (e.g., 'Qwen/Qwen3-4B-Instruct-2507')."
 
 	return fmt.Errorf("model '%s' is not supported by Kaito%s", modelName, suggestionText)
 }
@@ -219,6 +237,9 @@ official Kaito repository to ensure accuracy.`,
 
   # Describe a specific model
   kubectl kaito models describe phi-3.5-mini-instruct
+
+  # Describe a HuggingFace model
+  kubectl kaito models describe Qwen/Qwen3-4B-Instruct-2507
 
   # Filter models by type
   kubectl kaito models list --type LLM
@@ -312,6 +333,26 @@ func runModelsList(detailed, outputJSON bool) error {
 func runModelsDescribe(modelName string) error {
 	klog.V(2).Infof("Describing model: %s", modelName)
 
+	// Handle HuggingFace model IDs
+	if IsHuggingFaceModel(modelName) {
+		fmt.Printf("Model: %s (HuggingFace)\n", modelName)
+		fmt.Println("================")
+		fmt.Println()
+		fmt.Println("This is a HuggingFace model ID. Kaito will dynamically generate")
+		fmt.Println("a preset configuration for this model at deployment time.")
+		fmt.Println()
+		fmt.Println("Requirements:")
+		fmt.Println("  - The model architecture must be supported by vLLM")
+		fmt.Println("  - A HuggingFace access token may be required (use --model-access-secret)")
+		fmt.Println()
+		fmt.Println("Usage Example:")
+		fmt.Printf("  kubectl kaito deploy --workspace-name my-workspace --model %s --model-access-secret hf-token\n", modelName)
+		fmt.Println()
+		fmt.Printf("  For model details, visit: https://huggingface.co/%s\n", modelName)
+		fmt.Println()
+		return nil
+	}
+
 	models := getSupportedModels()
 
 	for _, model := range models {
@@ -402,8 +443,10 @@ func printModelsTable(models []Model) error {
 	}
 
 	fmt.Println()
-	fmt.Println("💡 Note: For deployment guidance and instanceType requirements,")
-	fmt.Println("   use 'kubectl kaito models describe <model>' or refer to Kaito workspace examples.")
+	fmt.Println("💡 You can also deploy any model from HuggingFace by using its model ID:")
+	fmt.Println("   kubectl kaito deploy --workspace-name my-workspace --model Qwen/Qwen3-4B-Instruct-2507 --model-access-secret hf-token")
+	fmt.Println()
+	fmt.Println("   For Kaito preset models, use 'kubectl kaito models describe <model>' for details.")
 
 	return nil
 }

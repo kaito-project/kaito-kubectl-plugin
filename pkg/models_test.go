@@ -64,16 +64,78 @@ func TestValidateModelName(t *testing.T) {
 			modelName:   "some-model",
 			expectError: false, // May still error if not in list, but should pass basic validation
 		},
+		{
+			name:        "HuggingFace model ID",
+			modelName:   "Qwen/Qwen3-4B-Instruct-2507",
+			expectError: false,
+		},
+		{
+			name:        "HuggingFace model ID with nested org",
+			modelName:   "microsoft/Phi-3.5-mini-instruct",
+			expectError: false,
+		},
+		{
+			name:        "Invalid HuggingFace model ID - missing model name",
+			modelName:   "meta-llama/",
+			expectError: true,
+		},
+		{
+			name:        "Invalid HuggingFace model ID - missing org",
+			modelName:   "/Llama-3.1-8B-Instruct",
+			expectError: true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateModelName(tt.modelName)
 
-			if tt.expectError && tt.modelName == "" {
+			if tt.expectError {
 				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "cannot be empty")
+				if tt.modelName == "" {
+					assert.Contains(t, err.Error(), "cannot be empty")
+				}
+			} else {
+				if IsHuggingFaceModel(tt.modelName) {
+					assert.NoError(t, err)
+				}
 			}
+		})
+	}
+}
+
+func TestIsHuggingFaceModel(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{
+			name:     "HuggingFace model ID",
+			input:    "Qwen/Qwen3-4B-Instruct-2507",
+			expected: true,
+		},
+		{
+			name:     "Kaito preset model",
+			input:    "llama-3.1-8b-instruct",
+			expected: false,
+		},
+		{
+			name:     "Empty string",
+			input:    "",
+			expected: false,
+		},
+		{
+			name:     "HuggingFace with multiple slashes",
+			input:    "org/sub/model",
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := IsHuggingFaceModel(tt.input)
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
