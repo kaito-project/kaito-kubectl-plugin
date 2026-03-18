@@ -95,10 +95,8 @@ func TestValidateModelName(t *testing.T) {
 				if tt.modelName == "" {
 					assert.Contains(t, err.Error(), "cannot be empty")
 				}
-			} else {
-				if IsHuggingFaceModel(tt.modelName) {
-					assert.NoError(t, err)
-				}
+			} else if IsHuggingFaceModel(tt.modelName) {
+				assert.NoError(t, err)
 			}
 		})
 	}
