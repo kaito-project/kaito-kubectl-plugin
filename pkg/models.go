@@ -36,38 +36,55 @@ import (
 )
 
 // SupportedModelsURL is the official URL for Kaito supported models
-const SupportedModelsURL = "https://raw.githubusercontent.com/kaito-project/kaito/main/presets/workspace/models/supported_models.yaml"
+const SupportedModelsURL = "https://raw.githubusercontent.com/kaito-project/kaito/main/presets/workspace/models/model_catalog.yaml"
 
 // Model represents a supported AI model from the official Kaito repository
 type Model struct {
-	Tags         []string          `json:"tags" yaml:"tags"`
-	Properties   map[string]string `json:"properties,omitempty" yaml:"properties,omitempty"`
-	Name         string            `json:"name" yaml:"name"`
-	Type         string            `json:"type" yaml:"type"`
-	Runtime      string            `json:"runtime" yaml:"runtime"`
-	Description  string            `json:"description" yaml:"description"`
-	Version      string            `json:"version" yaml:"version"`
-	Tag          string            `json:"tag" yaml:"tag"`
-	GPUMemory    string            `json:"gpu_memory" yaml:"gpuMemory"`
-	InstanceType string            `json:"instance_type,omitempty" yaml:"instanceType,omitempty"`
-	MinNodes     int               `json:"min_nodes" yaml:"minNodes"`
-	MaxNodes     int               `json:"max_nodes" yaml:"maxNodes"`
+	Name            string   `json:"name" yaml:"name"`
+	Description     string   `json:"description" yaml:"description"`
+	License         string   `json:"license" yaml:"license"`
+	PipelineTag     string   `json:"pipeline_tag" yaml:"pipelineTag"`
+	ModelFileSize   string   `json:"model_file_size" yaml:"modelFileSize"`
+	Architectures   []string `json:"architectures" yaml:"architectures"`
+	BaseModel       []string `json:"base_model,omitempty" yaml:"baseModel,omitempty"`
+	QuantMethod     string   `json:"quant_method,omitempty" yaml:"quantMethod,omitempty"`
+	ModelTokenLimit int      `json:"model_token_limit" yaml:"modelTokenLimit"`
+	HiddenSize      int      `json:"hidden_size" yaml:"hiddenSize"`
+	NumHiddenLayers int      `json:"num_hidden_layers" yaml:"numHiddenLayers"`
+	NumAttHeads     int      `json:"num_attention_heads" yaml:"numAttentionHeads"`
+	NumKVHeads      int      `json:"num_key_value_heads" yaml:"numKeyValueHeads"`
+	HeadDim         int      `json:"head_dim,omitempty" yaml:"headDim,omitempty"`
+	QuantBits       int      `json:"quant_bits,omitempty" yaml:"quantBits,omitempty"`
+	KVLoraRank      int      `json:"kv_lora_rank,omitempty" yaml:"kvLoraRank,omitempty"`
+	QKRopeHeadDim   int      `json:"qk_rope_head_dim,omitempty" yaml:"qkRopeHeadDim,omitempty"`
+	LoadFormat      string   `json:"load_format,omitempty" yaml:"loadFormat,omitempty"`
+	ConfigFormat    string   `json:"config_format,omitempty" yaml:"configFormat,omitempty"`
+	TokenizerMode   string   `json:"tokenizer_mode,omitempty" yaml:"tokenizerMode,omitempty"`
 }
 
-// KaitoSupportedModelsResponse represents the structure of the official supported_models.yaml
-type KaitoSupportedModelsResponse struct {
+// KaitoModelCatalogResponse represents the structure of the official model_catalog.yaml
+type KaitoModelCatalogResponse struct {
 	Models []struct {
-		Properties   map[string]string `yaml:"properties,omitempty"`
-		Name         string            `yaml:"name"`
-		Version      string            `yaml:"version,omitempty"`
-		Tag          string            `yaml:"tag,omitempty"`
-		Type         string            `yaml:"type,omitempty"`
-		Runtime      string            `yaml:"runtime,omitempty"`
-		GPUMemory    string            `yaml:"gpuMemory,omitempty"`
-		InstanceType string            `yaml:"instanceType,omitempty"`
-		Description  string            `yaml:"description,omitempty"`
-		MinNodes     int               `yaml:"minNodes,omitempty"`
-		MaxNodes     int               `yaml:"maxNodes,omitempty"`
+		Name            string   `yaml:"name"`
+		Description     string   `yaml:"description,omitempty"`
+		License         string   `yaml:"license,omitempty"`
+		PipelineTag     string   `yaml:"pipelineTag,omitempty"`
+		ModelFileSize   string   `yaml:"modelFileSize,omitempty"`
+		Architectures   []string `yaml:"architectures,omitempty"`
+		BaseModel       []string `yaml:"baseModel,omitempty"`
+		QuantMethod     string   `yaml:"quantMethod,omitempty"`
+		ModelTokenLimit int      `yaml:"modelTokenLimit,omitempty"`
+		HiddenSize      int      `yaml:"hiddenSize,omitempty"`
+		NumHiddenLayers int      `yaml:"numHiddenLayers,omitempty"`
+		NumAttHeads     int      `yaml:"numAttentionHeads,omitempty"`
+		NumKVHeads      int      `yaml:"numKeyValueHeads,omitempty"`
+		HeadDim         int      `yaml:"headDim,omitempty"`
+		QuantBits       int      `yaml:"quantBits,omitempty"`
+		KVLoraRank      int      `yaml:"kvLoraRank,omitempty"`
+		QKRopeHeadDim   int      `yaml:"qkRopeHeadDim,omitempty"`
+		LoadFormat      string   `yaml:"loadFormat,omitempty"`
+		ConfigFormat    string   `yaml:"configFormat,omitempty"`
+		TokenizerMode   string   `yaml:"tokenizerMode,omitempty"`
 	} `yaml:"models"`
 }
 
@@ -103,46 +120,36 @@ func fetchSupportedModelsFromKaito() ([]Model, error) {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	var kaitoModels KaitoSupportedModelsResponse
-	if err := yaml.Unmarshal(body, &kaitoModels); err != nil {
+	var catalog KaitoModelCatalogResponse
+	if err := yaml.Unmarshal(body, &catalog); err != nil {
 		klog.Errorf("Failed to parse YAML response: %v", err)
 		return nil, fmt.Errorf("failed to parse YAML response: %w", err)
 	}
 
 	// Convert to our Model struct format
 	var models []Model
-	for _, km := range kaitoModels.Models {
+	for _, km := range catalog.Models {
 		model := Model{
-			Name:         km.Name,
-			Type:         km.Type,
-			Runtime:      km.Runtime,
-			Version:      km.Version,
-			Tag:          km.Tag,
-			GPUMemory:    km.GPUMemory,
-			MinNodes:     km.MinNodes,
-			MaxNodes:     km.MaxNodes,
-			InstanceType: km.InstanceType,
-			Description:  km.Description,
-			Properties:   km.Properties,
-		}
-
-		// Set default values if not specified
-		if model.Type == "" {
-			model.Type = "LLM"
-		}
-		if model.Runtime == "" {
-			model.Runtime = "vllm"
-		}
-		if model.MinNodes == 0 {
-			model.MinNodes = 1
-		}
-		if model.MaxNodes == 0 {
-			model.MaxNodes = model.MinNodes
-		}
-
-		// Generate description if not provided
-		if model.Description == "" {
-			model.Description = fmt.Sprintf("Official Kaito supported model: %s", model.Name)
+			Name:            km.Name,
+			Description:     km.Description,
+			License:         km.License,
+			PipelineTag:     km.PipelineTag,
+			ModelFileSize:   km.ModelFileSize,
+			Architectures:   km.Architectures,
+			BaseModel:       km.BaseModel,
+			QuantMethod:     km.QuantMethod,
+			ModelTokenLimit: km.ModelTokenLimit,
+			HiddenSize:      km.HiddenSize,
+			NumHiddenLayers: km.NumHiddenLayers,
+			NumAttHeads:     km.NumAttHeads,
+			NumKVHeads:      km.NumKVHeads,
+			HeadDim:         km.HeadDim,
+			QuantBits:       km.QuantBits,
+			KVLoraRank:      km.KVLoraRank,
+			QKRopeHeadDim:   km.QKRopeHeadDim,
+			LoadFormat:      km.LoadFormat,
+			ConfigFormat:    km.ConfigFormat,
+			TokenizerMode:   km.TokenizerMode,
 		}
 
 		models = append(models, model)
@@ -171,7 +178,7 @@ func IsHuggingFaceModel(modelName string) bool {
 }
 
 // ValidateModelName checks if the provided model name is supported by Kaito.
-// Accepts both built-in Kaito preset names and HuggingFace model IDs (e.g., "Qwen/Qwen3-4B-Instruct-2507").
+// Accepts both models from the Kaito catalog and any valid HuggingFace model ID (org/model-name).
 func ValidateModelName(modelName string) error {
 	klog.V(4).Infof("Validating model name: %s", modelName)
 
@@ -190,20 +197,21 @@ func ValidateModelName(modelName string) error {
 		return nil
 	}
 
+	// Non-HuggingFace style names are not valid since all catalog models now use org/model format
 	models := getSupportedModels()
-	for _, model := range models {
-		if model.Name == modelName {
-			klog.V(4).Infof("Model %s is valid", modelName)
-			return nil
-		}
-	}
 
 	// Generate suggestions for similar model names
 	suggestions := []string{}
 	lowerModelName := strings.ToLower(modelName)
 	for _, model := range models {
-		if strings.Contains(strings.ToLower(model.Name), lowerModelName) ||
-			strings.Contains(lowerModelName, strings.ToLower(model.Name)) {
+		// Check if the model name part (after /) matches
+		parts := strings.SplitN(model.Name, "/", 2)
+		modelShortName := model.Name
+		if len(parts) == 2 {
+			modelShortName = parts[1]
+		}
+		if strings.Contains(strings.ToLower(modelShortName), lowerModelName) ||
+			strings.Contains(lowerModelName, strings.ToLower(modelShortName)) {
 			suggestions = append(suggestions, model.Name)
 		}
 	}
@@ -214,7 +222,7 @@ func ValidateModelName(modelName string) error {
 	} else {
 		suggestionText = "\n\nUse 'kubectl kaito models list' to see all supported models."
 	}
-	suggestionText += "\n\n💡 You can also use any HuggingFace model ID (e.g., 'Qwen/Qwen3-4B-Instruct-2507')."
+	suggestionText += "\n\n💡 Use the full HuggingFace model ID format (e.g., 'microsoft/Phi-3.5-mini-instruct')."
 
 	return fmt.Errorf("model '%s' is not supported by Kaito%s", modelName, suggestionText)
 }
@@ -236,16 +244,7 @@ official Kaito repository to ensure accuracy.`,
   kubectl kaito models list --detailed
 
   # Describe a specific model
-  kubectl kaito models describe phi-3.5-mini-instruct
-
-  # Describe a HuggingFace model
-  kubectl kaito models describe Qwen/Qwen3-4B-Instruct-2507
-
-  # Filter models by type
-  kubectl kaito models list --type LLM
-
-  # Filter models by tags
-  kubectl kaito models list --tags microsoft,small`,
+  kubectl kaito models describe microsoft/Phi-3.5-mini-instruct`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fmt.Println("Use 'kubectl kaito models list' or 'kubectl kaito models describe <model>' for more information")
 			return cmd.Help()
@@ -301,10 +300,10 @@ func newModelsDescribeCmd() *cobra.Command {
 - Resource requirements and scaling options
 - Usage examples and deployment commands`,
 		Example: `  # Describe the Phi-3.5 model
-  kubectl kaito models describe phi-3.5-mini-instruct
+  kubectl kaito models describe microsoft/Phi-3.5-mini-instruct
 
-  # Describe Llama 3 8B model
-  kubectl kaito models describe llama-3-8b`,
+  # Describe Llama 3.1 8B model
+  kubectl kaito models describe meta-llama/Llama-3.1-8B-Instruct`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runModelsDescribe(args[0])
@@ -333,31 +332,35 @@ func runModelsList(detailed, outputJSON bool) error {
 func runModelsDescribe(modelName string) error {
 	klog.V(2).Infof("Describing model: %s", modelName)
 
-	// Handle HuggingFace model IDs
-	if IsHuggingFaceModel(modelName) {
-		fmt.Printf("Model: %s (HuggingFace)\n", modelName)
-		fmt.Println("================")
-		fmt.Println()
-		fmt.Println("This is a HuggingFace model ID. Kaito will dynamically generate")
-		fmt.Println("a preset configuration for this model at deployment time.")
-		fmt.Println()
-		fmt.Println("Requirements:")
-		fmt.Println("  - The model architecture must be supported by vLLM")
-		fmt.Println("  - A HuggingFace access token may be required (use --model-access-secret)")
-		fmt.Println()
-		fmt.Println("Usage Example:")
-		fmt.Printf("  kubectl kaito deploy --workspace-name my-workspace --model %s --model-access-secret hf-token\n", modelName)
-		fmt.Println()
-		fmt.Printf("  For model details, visit: https://huggingface.co/%s\n", modelName)
-		fmt.Println()
-		return nil
-	}
-
 	models := getSupportedModels()
 
+	// Check if the model is in the catalog
 	for _, model := range models {
 		if model.Name == modelName {
 			return printModelDetail(model)
+		}
+	}
+
+	// If it's a valid HuggingFace model ID but not in catalog, show generic info
+	if IsHuggingFaceModel(modelName) {
+		parts := strings.SplitN(modelName, "/", 2)
+		if len(parts) == 2 && parts[0] != "" && parts[1] != "" {
+			fmt.Printf("Model: %s (HuggingFace)\n", modelName)
+			fmt.Println("================")
+			fmt.Println()
+			fmt.Println("This model is not in the Kaito catalog but can still be deployed.")
+			fmt.Println("Kaito will dynamically generate a preset configuration for this model at deployment time.")
+			fmt.Println()
+			fmt.Println("Requirements:")
+			fmt.Println("  - The model architecture must be supported by vLLM")
+			fmt.Println("  - A HuggingFace access token may be required (use --model-access-secret)")
+			fmt.Println()
+			fmt.Println("Usage Example:")
+			fmt.Printf("  kubectl kaito deploy --workspace-name my-workspace --model %s --model-access-secret hf-token\n", modelName)
+			fmt.Println()
+			fmt.Printf("  For model details, visit: https://huggingface.co/%s\n", modelName)
+			fmt.Println()
+			return nil
 		}
 	}
 
@@ -374,47 +377,52 @@ func capitalizeFirst(s string) string {
 }
 
 func extractModelFamily(modelName string) string {
-	// Handle empty model name
 	if modelName == "" {
 		return "Unknown"
 	}
 
-	// Extract the family name from the first part of the model name
-	parts := strings.Split(modelName, "-")
-	if len(parts) > 0 {
-		family := parts[0]
-		// Handle empty first part
-		if family == "" {
+	// For HuggingFace-style names (org/model), extract family from the model part
+	if strings.Contains(modelName, "/") {
+		parts := strings.SplitN(modelName, "/", 2)
+		if len(parts) == 2 && parts[1] != "" {
+			modelName = parts[1]
+		} else {
 			return "Unknown"
 		}
-
-		// Handle special cases for multi-part family names
-		if len(parts) > 1 {
-			switch family {
-			case "llama":
-				// Handle llama-3.1, llama-3.3, etc.
-				if len(parts) > 1 && (strings.HasPrefix(parts[1], "3.") || strings.HasPrefix(parts[1], "2")) {
-					return capitalizeFirst(family)
-				}
-				return capitalizeFirst(family)
-			case "phi":
-				// Handle phi-2, phi-3, phi-3.5, phi-4, etc.
-				return capitalizeFirst(family)
-			case "qwen2.5":
-				// Handle qwen2.5-coder
-				return "Qwen2.5"
-			case "qwen2":
-				return "Qwen2"
-			case "deepseek":
-				// Handle deepseek-r1-distill-llama-8b, deepseek-r1-distill-qwen-14b
-				return "DeepSeek"
-			default:
-				return capitalizeFirst(family)
-			}
-		}
-		return capitalizeFirst(family)
 	}
-	return "Unknown"
+
+	// Extract the family name from the first part of the model name
+	parts := strings.Split(modelName, "-")
+	if len(parts) == 0 || parts[0] == "" {
+		return "Unknown"
+	}
+
+	family := parts[0]
+	lowerFamily := strings.ToLower(family)
+
+	// Families with fixed canonical names
+	switch lowerFamily {
+	case "qwen2.5":
+		return "Qwen2.5"
+	case "qwen2":
+		return "Qwen2"
+	case "deepseek":
+		return "DeepSeek"
+	case "nvidia":
+		if len(parts) > 1 {
+			return capitalizeFirst(parts[1])
+		}
+	}
+
+	// Families that include the version suffix (e.g., "Llama-3.1", "Phi-4", "Gemma-3")
+	versionedFamilies := map[string]bool{
+		"llama": true, "phi": true, "ministral": true, "gemma": true,
+	}
+	if len(parts) > 1 && versionedFamilies[lowerFamily] {
+		return capitalizeFirst(family + "-" + parts[1])
+	}
+
+	return capitalizeFirst(family)
 }
 
 func printModelsTable(models []Model) error {
@@ -423,19 +431,14 @@ func printModelsTable(models []Model) error {
 	w := tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
 	defer w.Flush()
 
-	fmt.Fprintln(w, "NAME\tTYPE\tFAMILY\tRUNTIME\tTAG")
+	fmt.Fprintln(w, "NAME\tFAMILY\tPIPELINE\tLICENSE\tSIZE")
 
 	for _, model := range models {
-		// Skip base model
-		if strings.ToLower(model.Name) == "base" {
-			continue
-		}
-
-		// Extract family from first part of model name
+		// Extract family from org/model-name format
 		family := extractModelFamily(model.Name)
 
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-			model.Name, model.Type, family, model.Runtime, model.Tag)
+			model.Name, family, model.PipelineTag, model.License, model.ModelFileSize)
 	}
 
 	if err := w.Flush(); err != nil {
@@ -446,7 +449,7 @@ func printModelsTable(models []Model) error {
 	fmt.Println("💡 You can also deploy any model from HuggingFace by using its model ID:")
 	fmt.Println("   kubectl kaito deploy --workspace-name my-workspace --model Qwen/Qwen3-4B-Instruct-2507 --model-access-secret hf-token")
 	fmt.Println()
-	fmt.Println("   For Kaito preset models, use 'kubectl kaito models describe <model>' for details.")
+	fmt.Println("   For model details, use 'kubectl kaito models describe <model>'.")
 
 	return nil
 }
@@ -460,12 +463,17 @@ func printModelsDetailed(models []Model) error {
 		}
 
 		fmt.Printf("Name: %s\n", model.Name)
-		fmt.Printf("Type: %s\n", model.Type)
-		fmt.Printf("Runtime: %s\n", model.Runtime)
-		fmt.Printf("Version: %s\n", model.Version)
-		fmt.Printf("Description: %s\n", model.Description)
-		if len(model.Tags) > 0 {
-			fmt.Printf("Tags: %s\n", strings.Join(model.Tags, ", "))
+		fmt.Printf("License: %s\n", model.License)
+		fmt.Printf("Pipeline: %s\n", model.PipelineTag)
+		fmt.Printf("Size: %s\n", model.ModelFileSize)
+		if len(model.Architectures) > 0 {
+			fmt.Printf("Architectures: %s\n", strings.Join(model.Architectures, ", "))
+		}
+		if model.ModelTokenLimit > 0 {
+			fmt.Printf("Token Limit: %d\n", model.ModelTokenLimit)
+		}
+		if model.QuantMethod != "" {
+			fmt.Printf("Quantization: %s\n", model.QuantMethod)
 		}
 	}
 
@@ -491,33 +499,51 @@ func printModelDetail(model Model) error {
 	fmt.Printf("Model: %s\n", model.Name)
 	fmt.Println("================")
 	fmt.Println()
-	fmt.Printf("Description: %s\n", model.Description)
-	fmt.Printf("Type: %s\n", model.Type)
-	fmt.Printf("Runtime: %s\n", model.Runtime)
-	fmt.Printf("Version: %s\n", model.Version)
+	if model.Description != "" {
+		fmt.Printf("Description: %s\n", model.Description)
+	}
+	fmt.Printf("License: %s\n", model.License)
+	fmt.Printf("Pipeline: %s\n", model.PipelineTag)
+	fmt.Printf("Model File Size: %s\n", model.ModelFileSize)
 	fmt.Println()
-	fmt.Println("Resource Requirements:")
-	fmt.Println("  💡 GPU requirements are not available in the official Kaito repository.")
-	fmt.Println("     For instanceType guidance, refer to:")
-	fmt.Println("     - Kaito workspace examples in the GitHub repository")
-	fmt.Println("     - Azure VM sizes documentation")
-	fmt.Println("     - Hugging Face model cards for model sizes")
-	fmt.Println("     - Community benchmarks")
+	if len(model.Architectures) > 0 {
+		fmt.Printf("Architectures: %s\n", strings.Join(model.Architectures, ", "))
+	}
+	if model.ModelTokenLimit > 0 {
+		fmt.Printf("Token Limit: %d\n", model.ModelTokenLimit)
+	}
 	fmt.Println()
-	if len(model.Tags) > 0 {
-		fmt.Printf("Tags: %s\n", strings.Join(model.Tags, ", "))
+	fmt.Println("Model Architecture:")
+	if model.HiddenSize > 0 {
+		fmt.Printf("  Hidden Size: %d\n", model.HiddenSize)
+	}
+	if model.NumHiddenLayers > 0 {
+		fmt.Printf("  Hidden Layers: %d\n", model.NumHiddenLayers)
+	}
+	if model.NumAttHeads > 0 {
+		fmt.Printf("  Attention Heads: %d\n", model.NumAttHeads)
+	}
+	if model.NumKVHeads > 0 {
+		fmt.Printf("  KV Heads: %d\n", model.NumKVHeads)
+	}
+	if model.HeadDim > 0 {
+		fmt.Printf("  Head Dimension: %d\n", model.HeadDim)
+	}
+	fmt.Println()
+	if model.QuantMethod != "" {
+		fmt.Printf("Quantization: %s\n", model.QuantMethod)
+		if model.QuantBits > 0 {
+			fmt.Printf("Quant Bits: %d\n", model.QuantBits)
+		}
+		fmt.Println()
+	}
+	if len(model.BaseModel) > 0 {
+		fmt.Printf("Base Model: %s\n", strings.Join(model.BaseModel, ", "))
 		fmt.Println()
 	}
 
 	fmt.Println("Usage Example:")
 	fmt.Printf("  kubectl kaito deploy --workspace-name my-workspace --model %s\n", model.Name)
-
-	if model.InstanceType != "" {
-		fmt.Println()
-		fmt.Println("  # With recommended instance type:")
-		fmt.Printf("  kubectl kaito deploy --workspace-name my-workspace --model %s --instance-type %s\n", model.Name, model.InstanceType)
-	}
-
 	fmt.Println()
 	return nil
 }

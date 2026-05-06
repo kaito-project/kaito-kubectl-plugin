@@ -70,14 +70,14 @@ func TestDeployOptionsValidation(t *testing.T) {
 			name: "Valid options",
 			options: DeployOptions{
 				WorkspaceName: "test-workspace",
-				Model:         "phi-3.5-mini-instruct",
+				Model:         "microsoft/Phi-3.5-mini-instruct",
 			},
 			expectError: false,
 		},
 		{
 			name: "Missing workspace name",
 			options: DeployOptions{
-				Model: "phi-3.5-mini-instruct",
+				Model: "microsoft/Phi-3.5-mini-instruct",
 			},
 			expectError: true,
 		},
@@ -92,7 +92,7 @@ func TestDeployOptionsValidation(t *testing.T) {
 			name: "Tuning mode with valid tuning flags",
 			options: DeployOptions{
 				WorkspaceName: "test-workspace",
-				Model:         "phi-3.5-mini-instruct",
+				Model:         "microsoft/Phi-3.5-mini-instruct",
 				Tuning:        true,
 				TuningMethod:  "qlora",
 				InputURLs:     []string{"https://example.com/data.parquet"},
@@ -104,7 +104,7 @@ func TestDeployOptionsValidation(t *testing.T) {
 			name: "Tuning mode with model image",
 			options: DeployOptions{
 				WorkspaceName: "test-workspace",
-				Model:         "phi-3.5-mini-instruct",
+				Model:         "microsoft/Phi-3.5-mini-instruct",
 				Tuning:        true,
 				TuningMethod:  "qlora",
 				ModelImage:    "myregistry/base:latest",
@@ -117,7 +117,7 @@ func TestDeployOptionsValidation(t *testing.T) {
 			name: "Inference mode with model image - should fail",
 			options: DeployOptions{
 				WorkspaceName: "test-workspace",
-				Model:         "phi-3.5-mini-instruct",
+				Model:         "microsoft/Phi-3.5-mini-instruct",
 				ModelImage:    "myregistry/base:latest", // This should cause validation to fail
 			},
 			expectError: true,
@@ -126,7 +126,7 @@ func TestDeployOptionsValidation(t *testing.T) {
 			name: "Tuning mode with empty model image",
 			options: DeployOptions{
 				WorkspaceName: "test-workspace",
-				Model:         "phi-3.5-mini-instruct",
+				Model:         "microsoft/Phi-3.5-mini-instruct",
 				Tuning:        true,
 				TuningMethod:  "qlora",
 				ModelImage:    "", // Empty model image is valid
@@ -139,7 +139,7 @@ func TestDeployOptionsValidation(t *testing.T) {
 			name: "Tuning mode with all options",
 			options: DeployOptions{
 				WorkspaceName:     "test-workspace",
-				Model:             "phi-3.5-mini-instruct",
+				Model:             "microsoft/Phi-3.5-mini-instruct",
 				Tuning:            true,
 				TuningMethod:      "qlora",
 				ModelImage:        "myregistry/base:latest",
@@ -154,7 +154,7 @@ func TestDeployOptionsValidation(t *testing.T) {
 			name: "Tuning mode with PVC and model image",
 			options: DeployOptions{
 				WorkspaceName: "test-workspace",
-				Model:         "phi-3.5-mini-instruct",
+				Model:         "microsoft/Phi-3.5-mini-instruct",
 				Tuning:        true,
 				TuningMethod:  "qlora",
 				ModelImage:    "myregistry/base:latest",
@@ -167,7 +167,7 @@ func TestDeployOptionsValidation(t *testing.T) {
 			name: "Inference mode with valid inference flags",
 			options: DeployOptions{
 				WorkspaceName:     "test-workspace",
-				Model:             "phi-3.5-mini-instruct",
+				Model:             "microsoft/Phi-3.5-mini-instruct",
 				ModelAccessSecret: "my-secret",
 				Adapters:          []string{"adapter1", "adapter2"},
 			},
@@ -177,7 +177,7 @@ func TestDeployOptionsValidation(t *testing.T) {
 			name: "Tuning mode with inference flags - should fail",
 			options: DeployOptions{
 				WorkspaceName:     "test-workspace",
-				Model:             "phi-3.5-mini-instruct",
+				Model:             "microsoft/Phi-3.5-mini-instruct",
 				Tuning:            true,
 				TuningMethod:      "qlora",
 				InputURLs:         []string{"https://example.com/data.parquet"},
@@ -190,7 +190,7 @@ func TestDeployOptionsValidation(t *testing.T) {
 			name: "Inference mode with tuning flags - should fail",
 			options: DeployOptions{
 				WorkspaceName: "test-workspace",
-				Model:         "phi-3.5-mini-instruct",
+				Model:         "microsoft/Phi-3.5-mini-instruct",
 				InputURLs:     []string{"https://example.com/data.parquet"}, // This should cause validation to fail
 			},
 			expectError: true,
@@ -199,7 +199,7 @@ func TestDeployOptionsValidation(t *testing.T) {
 			name: "Tuning mode missing input data",
 			options: DeployOptions{
 				WorkspaceName: "test-workspace",
-				Model:         "phi-3.5-mini-instruct",
+				Model:         "microsoft/Phi-3.5-mini-instruct",
 				Tuning:        true,
 				TuningMethod:  "qlora",
 				OutputImage:   "myregistry/model:latest",
@@ -211,7 +211,7 @@ func TestDeployOptionsValidation(t *testing.T) {
 			name: "Tuning mode missing output",
 			options: DeployOptions{
 				WorkspaceName: "test-workspace",
-				Model:         "phi-3.5-mini-instruct",
+				Model:         "microsoft/Phi-3.5-mini-instruct",
 				Tuning:        true,
 				TuningMethod:  "qlora",
 				InputURLs:     []string{"https://example.com/data.parquet"},
@@ -223,7 +223,7 @@ func TestDeployOptionsValidation(t *testing.T) {
 			name: "Tuning mode with PVC options",
 			options: DeployOptions{
 				WorkspaceName: "test-workspace",
-				Model:         "phi-3.5-mini-instruct",
+				Model:         "microsoft/Phi-3.5-mini-instruct",
 				Tuning:        true,
 				TuningMethod:  "qlora",
 				InputPVC:      "training-data",
@@ -235,7 +235,7 @@ func TestDeployOptionsValidation(t *testing.T) {
 			name: "Inference mode with LoadBalancer enabled",
 			options: DeployOptions{
 				WorkspaceName:      "test-workspace",
-				Model:              "phi-3.5-mini-instruct",
+				Model:              "microsoft/Phi-3.5-mini-instruct",
 				EnableLoadBalancer: true,
 			},
 			expectError: false,
@@ -269,7 +269,7 @@ func TestDeployOptionsValidation(t *testing.T) {
 			name: "Tuning mode with LoadBalancer - should fail",
 			options: DeployOptions{
 				WorkspaceName:      "test-workspace",
-				Model:              "phi-3.5-mini-instruct",
+				Model:              "microsoft/Phi-3.5-mini-instruct",
 				Tuning:             true,
 				TuningMethod:       "qlora",
 				InputURLs:          []string{"https://example.com/data.parquet"},
@@ -304,7 +304,7 @@ func TestCreateInferenceConfigMap(t *testing.T) {
 			name: "Valid YAML file",
 			options: &DeployOptions{
 				WorkspaceName:   "test-workspace",
-				Model:           "phi-3.5-mini-instruct",
+				Model:           "microsoft/Phi-3.5-mini-instruct",
 				Namespace:       "default",
 				InferenceConfig: "testdata/inference_config.yaml",
 			},
@@ -319,7 +319,7 @@ func TestCreateInferenceConfigMap(t *testing.T) {
 			name: "Non-existent file",
 			options: &DeployOptions{
 				WorkspaceName:   "test-workspace",
-				Model:           "phi-3.5-mini-instruct",
+				Model:           "microsoft/Phi-3.5-mini-instruct",
 				Namespace:       "default",
 				InferenceConfig: "testdata/nonexistent.yaml",
 			},
@@ -372,7 +372,7 @@ func TestBuildWorkspaceWithModelImage(t *testing.T) {
 			name: "No model image",
 			options: &DeployOptions{
 				WorkspaceName: "test-workspace",
-				Model:         "phi-3.5-mini-instruct",
+				Model:         "microsoft/Phi-3.5-mini-instruct",
 				Tuning:        true,
 			},
 			expectImage: false,
@@ -381,7 +381,7 @@ func TestBuildWorkspaceWithModelImage(t *testing.T) {
 			name: "With model image",
 			options: &DeployOptions{
 				WorkspaceName: "test-workspace",
-				Model:         "phi-3.5-mini-instruct",
+				Model:         "microsoft/Phi-3.5-mini-instruct",
 				Tuning:        true,
 				ModelImage:    "myregistry/base:latest",
 			},
@@ -392,7 +392,7 @@ func TestBuildWorkspaceWithModelImage(t *testing.T) {
 			name: "With model image and tuning config",
 			options: &DeployOptions{
 				WorkspaceName: "test-workspace",
-				Model:         "phi-3.5-mini-instruct",
+				Model:         "microsoft/Phi-3.5-mini-instruct",
 				Tuning:        true,
 				ModelImage:    "myregistry/base:latest",
 				TuningConfig:  "my-config",
@@ -404,7 +404,7 @@ func TestBuildWorkspaceWithModelImage(t *testing.T) {
 			name: "With model image and all tuning options",
 			options: &DeployOptions{
 				WorkspaceName:     "test-workspace",
-				Model:             "phi-3.5-mini-instruct",
+				Model:             "microsoft/Phi-3.5-mini-instruct",
 				Tuning:            true,
 				ModelImage:        "myregistry/base:latest",
 				TuningConfig:      "my-config",
@@ -419,7 +419,7 @@ func TestBuildWorkspaceWithModelImage(t *testing.T) {
 			name: "With model image and PVC options",
 			options: &DeployOptions{
 				WorkspaceName: "test-workspace",
-				Model:         "phi-3.5-mini-instruct",
+				Model:         "microsoft/Phi-3.5-mini-instruct",
 				Tuning:        true,
 				ModelImage:    "myregistry/base:latest",
 				InputPVC:      "input-pvc",
@@ -517,7 +517,7 @@ func TestBuildWorkspaceWithModelImage(t *testing.T) {
 func TestBuildWorkspaceWithEmptyInference(t *testing.T) {
 	options := &DeployOptions{
 		WorkspaceName: "test-workspace",
-		Model:         "phi-3.5-mini-instruct",
+		Model:         "microsoft/Phi-3.5-mini-instruct",
 		Namespace:     "default",
 	}
 
@@ -545,7 +545,7 @@ func TestBuildWorkspaceWithInferenceConfig(t *testing.T) {
 			name: "No inference config",
 			options: &DeployOptions{
 				WorkspaceName: "test-workspace",
-				Model:         "phi-3.5-mini-instruct",
+				Model:         "microsoft/Phi-3.5-mini-instruct",
 				Namespace:     "default",
 			},
 			expectConfig: false,
@@ -554,7 +554,7 @@ func TestBuildWorkspaceWithInferenceConfig(t *testing.T) {
 			name: "Inference config from ConfigMap name",
 			options: &DeployOptions{
 				WorkspaceName:   "test-workspace",
-				Model:           "phi-3.5-mini-instruct",
+				Model:           "microsoft/Phi-3.5-mini-instruct",
 				Namespace:       "default",
 				InferenceConfig: "my-config",
 			},
@@ -565,7 +565,7 @@ func TestBuildWorkspaceWithInferenceConfig(t *testing.T) {
 			name: "Inference config from YAML file",
 			options: &DeployOptions{
 				WorkspaceName:   "test-workspace",
-				Model:           "phi-3.5-mini-instruct",
+				Model:           "microsoft/Phi-3.5-mini-instruct",
 				Namespace:       "default",
 				InferenceConfig: "/tmp/test_inference_config.yaml", // Must be an actual file path
 			},
@@ -630,7 +630,7 @@ func TestBuildWorkspaceWithLoadBalancer(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			options := &DeployOptions{
 				WorkspaceName:      "test-workspace",
-				Model:              "phi-3.5-mini-instruct",
+				Model:              "microsoft/Phi-3.5-mini-instruct",
 				Namespace:          "default",
 				EnableLoadBalancer: tt.enableLoadBalancer,
 				Count:              1,
@@ -687,7 +687,7 @@ func TestBuildWorkspaceStructure(t *testing.T) {
 			options: &DeployOptions{
 				WorkspaceName:     "test-workspace",
 				Namespace:         "default",
-				Model:             "phi-3.5-mini-instruct",
+				Model:             "microsoft/Phi-3.5-mini-instruct",
 				InstanceType:      "Standard_NC6s_v3",
 				Tuning:            true,
 				TuningMethod:      "qlora",

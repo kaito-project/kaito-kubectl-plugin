@@ -60,9 +60,9 @@ func TestValidateModelName(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name:        "Non-empty model name",
+			name:        "Non-HuggingFace style model name",
 			modelName:   "some-model",
-			expectError: false, // May still error if not in list, but should pass basic validation
+			expectError: true, // All valid models now use org/model format
 		},
 		{
 			name:        "HuggingFace model ID",
@@ -95,7 +95,7 @@ func TestValidateModelName(t *testing.T) {
 				if tt.modelName == "" {
 					assert.Contains(t, err.Error(), "cannot be empty")
 				}
-			} else if IsHuggingFaceModel(tt.modelName) {
+			} else {
 				assert.NoError(t, err)
 			}
 		})
@@ -146,8 +146,6 @@ func TestGetSupportedModels(t *testing.T) {
 		// Check that models have required fields
 		for _, model := range models {
 			assert.NotEmpty(t, model.Name)
-			assert.NotEmpty(t, model.Type)
-			assert.NotEmpty(t, model.Runtime)
 		}
 	})
 }
@@ -159,49 +157,44 @@ func TestExtractModelFamily(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "Falcon model",
+			name:     "HuggingFace model with org",
+			input:    "microsoft/Phi-3.5-mini-instruct",
+			expected: "Phi-3.5",
+		},
+		{
+			name:     "HuggingFace meta-llama model",
+			input:    "meta-llama/Llama-3.1-8B-Instruct",
+			expected: "Llama-3.1",
+		},
+		{
+			name:     "HuggingFace deepseek model",
+			input:    "deepseek-ai/DeepSeek-R1-0528",
+			expected: "DeepSeek",
+		},
+		{
+			name:     "HuggingFace Qwen model",
+			input:    "Qwen/Qwen2.5-Coder-7B-Instruct",
+			expected: "Qwen2.5",
+		},
+		{
+			name:     "Falcon model (legacy format)",
 			input:    "falcon-7b",
 			expected: "Falcon",
 		},
 		{
-			name:     "Falcon instruct model",
-			input:    "falcon-7b-instruct",
-			expected: "Falcon",
-		},
-		{
-			name:     "Llama model",
+			name:     "Llama model (legacy format)",
 			input:    "llama-3.1-8b-instruct",
-			expected: "Llama",
+			expected: "Llama-3.1",
 		},
 		{
-			name:     "Phi model",
+			name:     "Phi model (legacy format)",
 			input:    "phi-3.5-mini-instruct",
-			expected: "Phi",
+			expected: "Phi-3.5",
 		},
 		{
-			name:     "Phi simple model",
-			input:    "phi-2",
-			expected: "Phi",
-		},
-		{
-			name:     "Mistral model",
-			input:    "mistral-7b-instruct",
-			expected: "Mistral",
-		},
-		{
-			name:     "DeepSeek model",
+			name:     "DeepSeek model (legacy format)",
 			input:    "deepseek-r1-distill-llama-8b",
 			expected: "DeepSeek",
-		},
-		{
-			name:     "DeepSeek Qwen model",
-			input:    "deepseek-r1-distill-qwen-14b",
-			expected: "DeepSeek",
-		},
-		{
-			name:     "Qwen2.5 coder model",
-			input:    "qwen2.5-coder-7b-instruct",
-			expected: "Qwen2.5",
 		},
 		{
 			name:     "Single word model",
